@@ -1,0 +1,83 @@
+# ---------------------
+# 1. Build & Output Folders
+# ---------------------
+build/
+
+# Standard Visual Studio output folders
+[Rr]elease/
+x64/
+x86/
+[Bb]in/
+[Oo]bj/
+out/
+
+# ---------------------
+# 2. Project Specifics
+# ---------------------
+# Dear ImGui layout file (saves window positions, changes every run)
+imgui.ini
+
+# VCPKG (Package manager)
+vcpkg/
+vcpkg_installed/
+
+# ---------------------
+# 3. IDE & Editor Files
+# ---------------------
+# Visual Studio (Hidden metadata folder)
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# ---------------------
+# 4. CMake Files
+# ---------------------
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+cmake_install.cmake
+install_manifest.txt
+CTestTestfile.cmake
+_deps/
+*.cmake
+!CMakeLists.txt
+
+# ---------------------
+# 5. Compiled Binaries & Objects
+# ---------------------
+# Object files
+*.slo
+*.lo
+*.o
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# ---------------------
+# 6. OS Generated Files
+# ---------------------
+.DS_Store
+Thumbs.db
