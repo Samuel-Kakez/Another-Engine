@@ -2,8 +2,9 @@
 #include "Core/GameObject.h"
 #include "Core/Scene.h"
 #include "Managers/InputManager.h"
-#include "Renderer/Camera.h"
+#include "Components/Camera.h"
 #include "Core/ComponentFactory.h"
+#include "Core/Transform.h"
 
 #include "Math/Quaternion.h"
 #include "Math/Vector3.h"
@@ -18,15 +19,21 @@ FreeCamController::FreeCamController(float moveSpeed, float lookSensitivity) : m
 
 void FreeCamController::Update(float deltaTime)
 {
+
+    Camera *camera = gameObject->GetScene().GetCamera();
+    if (!camera)
+        return;
+
+    Transform *camTransform = camera->gameObject->GetComponent<Transform>();
+    if (!camTransform)
+        return;
+
     // Initialisation unique au premier appel
     if (!m_isInitialized)
     {
-        if (Camera *camera = gameObject->GetScene().GetCamera())
-        {
-            Vector3 initialEuler = camera->GetOrientation().ToEulerAngles();
-            m_pitch = initialEuler.x;
-            m_yaw = initialEuler.y;
-        }
+        Vector3 initialEuler = camTransform->GetOrientation().ToEulerAngles();
+        m_pitch = initialEuler.x;
+        m_yaw = initialEuler.y;
         m_isInitialized = true;
     }
 
@@ -47,10 +54,6 @@ void FreeCamController::Update(float deltaTime)
         return;
     }
 
-    Camera *camera = gameObject->GetScene().GetCamera();
-    if (!camera)
-        return;
-
     // 1. Rotation
     Vector2 mouseDelta = input.GetMouseDelta();
     m_yaw -= mouseDelta.x * m_lookSensitivity;
@@ -60,10 +63,10 @@ void FreeCamController::Update(float deltaTime)
     m_pitch = std::clamp(m_pitch, -89.9f, 89.9f);
 
     Quaternion orientation = Quaternion::FromEulerAngles(Vector3(m_pitch, m_yaw, 0.0f));
-    camera->SetOrientation(orientation);
+    camTransform->SetOrientation(orientation);
 
     // 2. Déplacement
-    Vector3 position = camera->GetPosition();
+    Vector3 position = camTransform->GetPosition();
     const float currentSpeed = m_moveSpeed * deltaTime;
     const Vector3 front = orientation * Vector3(0, 0, -1);
     Vector3 right = Cross(front, Vector3(0, 1, 0));
@@ -84,7 +87,7 @@ void FreeCamController::Update(float deltaTime)
     if (input.IsKeyPressed(GLFW_KEY_LEFT_CONTROL))
         position = position - (Vector3(0, 1, 0) * currentSpeed);
 
-    camera->SetPosition(position);
+    camTransform->SetPosition(position);
 }
 
 // Enregistrement auprès de la factory

@@ -2,7 +2,7 @@
 #include "Core/Scene.h"
 #include "Core/GameObject.h"
 #include "Managers/ResourceManager.h"
-#include "Renderer/Camera.h"
+#include "Components/Camera.h"
 #include "Core/ComponentFactory.h"
 #include "Core/Transform.h"
 #include "Renderer/Material.h"

@@ -1,4 +1,4 @@
-#include "texture.h"
+#include "Texture.h"
 
 Texture::~Texture()
 {

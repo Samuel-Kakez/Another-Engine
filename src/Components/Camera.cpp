@@ -1,4 +1,4 @@
-#include "Renderer/Camera.h"
+#include "Components/Camera.h"
 #include "Core/ComponentFactory.h"
 #include "Core/GameObject.h"
 #include "Core/Scene.h"
@@ -7,48 +7,41 @@
 #include <nlohmann/json.hpp>
 
 Camera::Camera()
-    : m_position(0.0f, 0.0f, 0.0f),
-      m_orientation(),
-      m_fov(75.0f),
+    : m_fov(75.0f),
       m_nearPlane(0.1f),
-      m_farPlane(100.0f),
-      m_worldUp(0.0f, 1.0f, 0.0f)
+      m_farPlane(100.0f)
 {
-    updateCameraVectors();
+}
+
+Vector3 Camera::GetPosition() const
+{
+    Transform *tr = gameObject->GetComponent<Transform>();
+    return tr->getWorldPosition();
+}
+
+Quaternion Camera::GetOrientation() const
+{
+    Transform *tr = gameObject->GetComponent<Transform>();
+    return tr->GetOrientation();
 }
 
 Matrix4x4 Camera::GetViewMatrix() const
 {
-    // on retourne les membres pré-calculés
-    return Matrix4x4::CreateLookAt(m_position, m_position + m_front, m_up);
-}
+    Transform *tr = gameObject->GetComponent<Transform>();
+    Vector3 position = tr->getWorldPosition();
+    Quaternion orientation = tr->GetOrientation();
 
-void Camera::updateCameraVectors()
-{
+    Vector3 front = orientation * Vector3(0, 0, -1);
+    Vector3 up = orientation * Vector3(0, 1, 0);
+    front.Normalize();
+    up.Normalize();
 
-    m_front = m_orientation * Vector3(0, 0, -1);
-    m_up = m_orientation * Vector3(0, 1, 0);
-    m_right = Cross(m_front, m_up);
-
-    m_front.Normalize();
-    m_up.Normalize();
-    m_right.Normalize();
+    return Matrix4x4::CreateLookAt(position, position + front, up);
 }
 
 void Camera::UpdateFrustum(const Matrix4x4 &viewProjectionMatrix)
 {
     m_frustum.Update(viewProjectionMatrix);
-}
-
-void Camera::SetPosition(const Vector3 &position)
-{
-    m_position = position;
-}
-
-void Camera::SetOrientation(const Quaternion &orientation)
-{
-    m_orientation = orientation;
-    updateCameraVectors();
 }
 
 namespace
@@ -73,14 +66,6 @@ namespace
         // Enregistre cette cam comme cam active de la scène
         owner->GetScene().SetActiveCamera(cam);
         LOG_INFO("caméra active définie (FOV=%.0f, near=%.2f, far=%.0f).", cam->GetFov(), cam->GetNearPlane(), cam->GetFarPlane());
-
-        Transform *tr = owner->GetComponent<Transform>();
-        if (tr)
-        {
-            cam->SetPosition(tr->GetPosition());
-            cam->SetOrientation(tr->GetOrientation());
-        }
-
         return cam;
     }
 

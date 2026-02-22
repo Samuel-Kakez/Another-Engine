@@ -9,7 +9,7 @@
 #include "Renderer/Shader.h"
 #include "Components/MeshRenderer.h"
 #include "Math/Matrix4x4.h"
-#include "Renderer/Camera.h"
+#include "Components/Camera.h"
 
 #include <glad/glad.h>
 #include <cmath>

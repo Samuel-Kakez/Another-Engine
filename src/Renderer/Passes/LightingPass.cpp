@@ -7,7 +7,7 @@
 #include "Core/Transform.h"
 #include "Core/Scene.h"
 #include "Core/GameObject.h"
-#include "Renderer/Camera.h"
+#include "Components/Camera.h"
 #include "Math/Vector3.h"
 #include "Debug/StatsManager.h"
 #include <GLFW/glfw3.h>

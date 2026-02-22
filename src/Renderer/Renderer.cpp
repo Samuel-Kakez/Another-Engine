@@ -14,7 +14,7 @@
 #include "Managers/LightManager.h"
 #include "Components/MeshRenderer.h"
 #include "Components/DirectionalLight.h"
-#include "Renderer/Camera.h"
+#include "Components/Camera.h"
 
 #include "Core/EventDispatcher.h"
 #include "Renderer/Passes/LightingPass.h"

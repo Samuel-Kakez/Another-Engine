@@ -29,6 +29,7 @@ set(ENGINE_SOURCES
     src/Components/MeshRenderer.cpp
     src/Components/DirectionalLight.cpp
     src/Components/FreeCamController.cpp
+    src/Components/Camera.cpp
     src/Math/Vector2.cpp
     src/Math/Vector3.cpp
     src/Math/Matrix4x4.cpp
@@ -38,7 +39,6 @@ set(ENGINE_SOURCES
     src/Math/Frustum.cpp
     src/Math/Plane.cpp
     src/Renderer/Renderer.cpp
-    src/Renderer/Camera.cpp
     src/Renderer/Shader.cpp
     src/Renderer/Texture.cpp
     src/Renderer/FullscreenQuad.cpp

@@ -55,9 +55,9 @@ private:
 
     // systèmes principaux du moteur, possédés par des unique_ptr pour une gestion automatique de la mémoire.
     std::unique_ptr<ResourceManager> m_resourceManager;
+    std::unique_ptr<Scene> m_scene;
     std::unique_ptr<LightManager> m_lightManager;
     std::unique_ptr<InputManager> m_inputManager;
     std::unique_ptr<Renderer> m_renderer;
-    std::unique_ptr<Scene> m_scene;
     std::unique_ptr<DebugUI> m_debugUI;
 };
