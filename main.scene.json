@@ -1,0 +1,206 @@
+{
+  "settings": {},
+  "materials": [
+    {
+      "name": "GroundMaterial",
+      "shader": "lighting",
+      "albedoTexture": "assets/textures/ground.png",
+      "tiling": [
+        40.0,
+        40.0
+      ],
+      "albedoColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "metallic": 0.0,
+      "roughness": 1.0
+    },
+    {
+      "name": "PastelRed",
+      "shader": "lighting",
+      "albedoColor": [
+        1.0,
+        0.1,
+        0.1
+      ],
+      "metallic": 0.0,
+      "roughness": 1.0
+    },
+    {
+      "name": "PastelGreen",
+      "shader": "lighting",
+      "albedoColor": [
+        0.1,
+        1.0,
+        0.1
+      ],
+      "metallic": 0.0,
+      "roughness": 1.0
+    },
+    {
+      "name": "PastelBlue",
+      "shader": "lighting",
+      "albedoColor": [
+        0.1,
+        0.1,
+        1.0
+      ],
+      "metallic": 0.0,
+      "roughness": 1.0
+    }
+  ],
+  "gameObjects": [
+    {
+      "name": "Ground",
+      "components": [
+        {
+          "type": "Transform",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            10,
+            10,
+            10
+          ]
+        },
+        {
+          "type": "MeshRenderer",
+          "model": "assets/models/plane.obj",
+          "material": "GroundMaterial"
+        }
+      ]
+    },
+    {
+      "name": "Cube_Left",
+      "components": [
+        {
+          "type": "Transform",
+          "position": [
+            -3.0,
+            1.5,
+            0.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "type": "MeshRenderer",
+          "model": "assets/models/cube.obj",
+          "material": "PastelRed"
+        }
+      ]
+    },
+    {
+      "name": "Sphere_Center",
+      "components": [
+        {
+          "type": "Transform",
+          "position": [
+            0.0,
+            1.5,
+            0.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "type": "MeshRenderer",
+          "model": "assets/models/sphere.obj",
+          "material": "PastelGreen"
+        }
+      ]
+    },
+    {
+      "name": "Capsule_Right",
+      "components": [
+        {
+          "type": "Transform",
+          "position": [
+            3.0,
+            1.5,
+            0.0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "type": "MeshRenderer",
+          "model": "assets/models/capsule.obj",
+          "material": "PastelBlue"
+        }
+      ]
+    },
+    {
+      "name": "Sun",
+      "components": [
+        {
+          "type": "Transform",
+          "position": [
+            0,
+            50,
+            20
+          ],
+          "rotation": [
+            -45,
+            20,
+            0
+          ]
+        },
+        {
+          "type": "DirectionalLight",
+          "color": [
+            1.0,
+            1.0,
+            0.9
+          ],
+          "intensity": 1.0,
+          "castsShadows": true,
+          "shadowResolution": 2048
+        }
+      ]
+    },
+    {
+      "name": "Main Camera",
+      "components": [
+        {
+          "type": "Transform",
+          "position": [
+            0,
+            5,
+            15
+          ],
+          "rotation": [
+            -10,
+            0,
+            0
+          ]
+        },
+        {
+          "type": "Camera",
+          "fov": 75,
+          "nearPlane": 0.1,
+          "farPlane": 1000
+        },
+        {
+          "type": "FreeCamController",
+          "speed": 20.0,
+          "sensitivity": 0.1
+        }
+      ]
+    }
+  ]
+}
