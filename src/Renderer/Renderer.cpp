@@ -46,7 +46,7 @@ Renderer::Renderer(ResourceManager &resourceManager, EventDispatcher &dispatcher
 
     // chargement des shaders nécessaires au rendu
 
-    resourceManager.GetShader("directional_shadow", "assets/shaders/directional_shadow.vert", "assets/shaders/directional_shadow.frag");
+    resourceManager.GetShader("directional_shadow", "assets/shaders/directional_shadow.vert", "assets/shaders/directional_shadow.frag", "assets/shaders/directional_shadow.geom");
     resourceManager.GetShader("lighting", "assets/shaders/lighting.vert", "assets/shaders/lighting.frag");
 
     // Initialisation des UBOs

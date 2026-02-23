@@ -98,36 +98,45 @@ void LightManager::Clear()
 
 void LightManager::CreateShadowResourcesFor(DirectionalLight *light)
 {
-    // On ne fait rien si la lumière est nulle ou a déjà  une cubemap
-    if (light == nullptr || light->shadowMap != 0)
+    if (light == nullptr || light->shadowMapArray != 0)
     {
         return;
     }
 
-    // Génération de la texture
-    glGenTextures(1, &light->shadowMap);
-    glBindTexture(GL_TEXTURE_2D, light->shadowMap);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, light->shadowResolution, light->shadowResolution, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+    // --- Création de la texture array pour le Cascaded Shadow Mapping ---
+    // GL_TEXTURE_2D_ARRAY : une texture 3D où chaque "tranche" est une shadow map de cascade
+    // Chaque layer a la même résolution
+    // Format GL_DEPTH_COMPONENT32F pour la précision en profondeur
+    glGenTextures(1, &light->shadowMapArray);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, light->shadowMapArray);
 
-    // On définit les paramètres de la texture
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    // 4 layers, un par cascade
+    glTexImage3D(
+        GL_TEXTURE_2D_ARRAY, 0, GL_DEPTH_COMPONENT32F,
+        light->shadowResolution, light->shadowResolution,
+        DirectionalLight::NUM_CASCADES,
+        0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+
+        // NEAREST filtering : pas d'interpolation sur les valeurs de profondeur (le PCF se fait dans le shader)
+        // CLAMP_TO_BORDER avec couleur blanche (1.0) : hors-frustum -> profondeur max -> pas d'ombre
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
 
     float borderColor[] = {1.0f, 1.0f, 1.0f, 1.0f};
-    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+    glTexParameterfv(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BORDER_COLOR, borderColor);
 
-    glBindTexture(GL_TEXTURE_2D, 0); // On délie la texture
-    LOG_INFO("shadow map créée (%ux%u).", light->shadowResolution, light->shadowResolution);
+    glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+    LOG_INFO("CSM shadow map array créée (%ux%u, %d cascades).", light->shadowResolution, light->shadowResolution, DirectionalLight::NUM_CASCADES);
 }
 
 void LightManager::DestroyShadowResourcesFor(DirectionalLight *light)
 {
     // On ne supprime la texture que si elle existe
-    if (light != nullptr && light->shadowMap != 0)
+    if (light != nullptr && light->shadowMapArray != 0)
     {
-        glDeleteTextures(1, &light->shadowMap);
-        light->shadowMap = 0;
+        glDeleteTextures(1, &light->shadowMapArray);
+        light->shadowMapArray = 0;
     }
 }

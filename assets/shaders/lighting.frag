@@ -5,7 +5,7 @@ out vec4 FragColor;
 in vec3 FragPos;
 in vec2 TexCoords;
 in mat3 TBN;
-in vec4 FragPosLightSpace;
+in float ClipSpaceZ;
 
 // ============================================================================
 // STRUCTS et UNIFORMS
@@ -31,7 +31,12 @@ struct Material {
 
 uniform Material material;
 uniform DirectionalLight dirLight;
-uniform sampler2D shadowMap;
+
+// Cascaded Shadow Mapping
+const int NUM_CASCADES = 4;
+uniform sampler2DArray shadowMapArray;
+uniform mat4 lightSpaceMatrices[NUM_CASCADES];
+uniform float cascadePlaneDistances[NUM_CASCADES];
 
 uniform vec3 camPos;
 uniform float exposure;
@@ -68,10 +73,10 @@ vec3 FresnelSchlick(float cosTheta, vec3 F0) {
 }
 
 // ============================================================================
-// SOFT SHADOW - Poisson Disk Sampling (Rotated)
+// CASCADED SOFT SHADOW - Poisson Disk Sampling (Rotated)
 // ============================================================================
 
-// Distribution de Poisson (16 samples) - Qualité maximale
+// Distribution de Poisson (16 samples)
 const vec2 poissonDisk[16] = vec2[](
    vec2( -0.94201624, -0.39906216 ), vec2( 0.94558609, -0.76890725 ),
    vec2( -0.094184101, -0.92938870 ), vec2( 0.34495938, 0.29387760 ),
@@ -83,50 +88,59 @@ const vec2 poissonDisk[16] = vec2[](
    vec2( 0.19984126, 0.78641367 ), vec2( 0.14383161, -0.14100790 )
 );
 
-// Générateur de bruit pseudo-aléatoire basé sur la position du fragment
-float random(vec3 seed, int i){
-    vec4 seed4 = vec4(seed, i);
-    float dot_product = dot(seed4, vec4(12.9898,78.233,45.164,94.673));
-    return fract(sin(dot_product) * 43758.5453);
-}
+float CascadedShadowTest(vec3 fragWorldPos, vec3 normal, vec3 lightDir) {
+    // Sélection de la cascade appropriée basée sur la profondeur clip-space du fragment
+    int cascadeIndex = NUM_CASCADES - 1;
+    for (int i = 0; i < NUM_CASCADES; ++i) {
+        if (ClipSpaceZ < cascadePlaneDistances[i]) {
+            cascadeIndex = i;
+            break;
+        }
+    }
 
-float ShadowTest(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir) {
-    // 1. Projection
+    // Projection dans l'espace lumière de cette cascade
+    vec4 fragPosLightSpace = lightSpaceMatrices[cascadeIndex] * vec4(fragWorldPos, 1.0);
     vec3 coords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     coords = coords * 0.5 + 0.5;
 
-    // 2. Gestion des bords et hors-frustum
+    // Hors-frustum -> pas d'ombre
     if (coords.z > 1.0 || coords.x < 0.0 || coords.x > 1.0 || coords.y < 0.0 || coords.y > 1.0)
         return 0.0;
 
-    // 3. Bias Adaptatif (Minimaliste pour éviter le Peter Panning avec Culling Front)
-    float bias = 0.00001; 
-    
-    // 4. Stratified Sampling (Rotation aléatoire du disque)
+    // Bias adaptatif par cascade (les cascades éloignées ont plus de texels donc besoin de plus de bias)
+    float baseBias = 0.00001;
+    float bias = baseBias * float(cascadeIndex + 1);
+
+    // Stratified Sampling (Rotation aléatoire du disque)
     float randomAngle = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) * 6.283185;
     float s = sin(randomAngle);
     float c = cos(randomAngle);
     mat2 rot = mat2(c, -s, s, c);
 
     float shadow = 0.0;
-    vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
-    
-    // Paramètre de douceur (Radius). 
-    float diskRadius = 3.0; 
+    vec2 texelSize = 1.0 / vec2(textureSize(shadowMapArray, 0).xy);
 
-    // 5. Boucle PCF (16 samples)
+    // Rayon ajusté par cascade : les cascades proches = plus nettes, éloignées = plus douces
+    float diskRadius = 2.0 + float(cascadeIndex) * 0.5;
+
+    // PCF 16 samples
     for(int i = 0; i < 16; ++i) {
-        // Rotation du sample offset
         vec2 offset = rot * poissonDisk[i] * diskRadius;
-        
-        // Sampling avec le décalage
-        float pcfDepth = texture(shadowMap, coords.xy + offset * texelSize).r;
-        
-        // Test de profondeur
+        float pcfDepth = texture(shadowMapArray, vec3(coords.xy + offset * texelSize, float(cascadeIndex))).r;
         shadow += (coords.z - bias > pcfDepth) ? 1.0 : 0.0;
     }
 
-    return shadow / 16.0;
+    // Fondu entre la dernière cascade et "pas d'ombre" pour éviter une coupure nette
+    float fadeFactor = 1.0;
+    if (cascadeIndex == NUM_CASCADES - 1) {
+        float edgeDist = max(
+            max(abs(coords.x - 0.5), abs(coords.y - 0.5)),
+            abs(coords.z - 0.5)
+        );
+        fadeFactor = smoothstep(0.5, 0.4, edgeDist);
+    }
+
+    return (shadow / 16.0) * fadeFactor;
 }
 
 // ============================================================================
@@ -172,8 +186,8 @@ void main() {
     vec3 kD = (1.0 - F) * (1.0 - metallic);
     float NdotL = max(dot(N, L), 0.0);
 
-    // Ombre (Soft Shadow)
-    float shadow = dirLight.castsShadows ? ShadowTest(FragPosLightSpace, N, L) : 0.0;
+    // Ombre (Cascaded Soft Shadow)
+    float shadow = dirLight.castsShadows ? CascadedShadowTest(FragPos, N, L) : 0.0;
 
     // Lumière directe
     vec3 radiance = dirLight.color * dirLight.intensity;

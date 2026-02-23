@@ -5,9 +5,12 @@
 /// @brief Paramètres de la projection de la shadow map
 struct ShadowSettings
 {
-    float orthoSize = 20.0f;
-    float nearPlane = 0.1f;
-    float farPlane = 100.0f;
+    /// @brief Distance maximale à laquelle les ombres sont rendues
+    float maxShadowDistance = 100.0f;
+
+    /// @brief Multiplicateur lambda pour le split scheme (0 = uniform, 1 = logarithmic)
+    // 0.5 est un bon compromis
+    float cascadeSplitLambda = 0.5f;
 };
 
 /// @brief Paramètres d'éclairage ambient hémisphérique

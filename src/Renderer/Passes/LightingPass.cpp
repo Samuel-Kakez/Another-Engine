@@ -51,13 +51,23 @@ void LightingPass::Execute(RenderData &data)
         lightingShader->setVec3("dirLight.color", settings.lightColor);
         lightingShader->setFloat("dirLight.intensity", settings.lightIntensity);
         lightingShader->setBool("dirLight.castsShadows", light->castsShadows);
-        lightingShader->setMat4("lightSpaceMatrix", data.lightSpaceMatrix);
 
-        if (light->castsShadows && light->shadowMap != 0)
+        // --- Cascaded Shadow Map uniforms ---
+        // On envoie les 4 matrices light-space et les 4 distances de plan de cascade
+        // au fragment shader pour la sélection de cascade et la projection dans l'espace lumière
+        for (int i = 0; i < DirectionalLight::NUM_CASCADES; ++i)
+        {
+            lightingShader->setMat4(
+                "lightSpaceMatrices[" + std::to_string(i) + "]", data.lightSpaceMatrices[i]);
+            lightingShader->setFloat("cascadePlaneDistances[" + std::to_string(i) + "]", data.cascadePlaneDistances[i]);
+        }
+
+        // Bind de la texture array CSM sur l'unité 8 (évite les confilts avec textures matériau)
+        if (light->castsShadows && light->shadowMapArray != 0)
         {
             glActiveTexture(GL_TEXTURE8);
-            glBindTexture(GL_TEXTURE_2D, light->shadowMap);
-            lightingShader->setInt("shadowMap", 8);
+            glBindTexture(GL_TEXTURE_2D_ARRAY, light->shadowMapArray);
+            lightingShader->setInt("shadowMapArray", 8);
         }
     }
     else

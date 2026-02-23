@@ -9,11 +9,10 @@ layout (location = 4) in vec3 aBitangent;
 out vec3 FragPos;
 out vec2 TexCoords;
 out mat3 TBN;
-out vec4 FragPosLightSpace;
+out float ClipSpaceZ;
 
 uniform mat4 model;
 uniform vec2 tiling;
-uniform mat4 lightSpaceMatrix;
 
 layout (std140) uniform Matrices
 {
@@ -40,6 +39,7 @@ void main()
 
     TBN = mat3(T, B, N);
 
-    FragPosLightSpace = lightSpaceMatrix * vec4(FragPos, 1.0);
-    gl_Position = projection * view * vec4(FragPos, 1.0);
+    vec4 clipPos = projection * view * vec4(FragPos, 1.0);
+    ClipSpaceZ = clipPos.z;
+    gl_Position = clipPos;
 }

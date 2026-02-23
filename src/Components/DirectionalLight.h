@@ -12,12 +12,18 @@ class DirectionalLight : public Component
 {
 
 public:
+
+	/// @brief Nombre de cascades pour le CSM
+	static constexpr int NUM_CASCADES = 4;
+
 	/// @brief Indique si cette lumière projette des ombres
 	bool castsShadows;
 	/// @brief Résolution de la shadowmap en pixels
 	unsigned int shadowResolution;
-	/// @brief Identifiant OpenGL de la shadow map (0 si non initialisé)
-	unsigned int shadowMap = 0;
+	
+	/// @brief Identifiant OpenGL de la shadow map array (GL_TEXTURE_2D_ARRAY, NUM_CASCADES layers)
+	/// Initialisé à 0, créé par LightManager::CreateShadowResourcesFor()
+	unsigned int shadowMapArray = 0;
 	/// @brief Constructeur par défaut
 	DirectionalLight();
 	/// @param intensity 

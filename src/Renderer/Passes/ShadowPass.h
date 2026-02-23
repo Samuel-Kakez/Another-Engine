@@ -1,36 +1,55 @@
 #pragma once
 
 #include "Renderer/Passes/IRenderPass.h"
+#include <vector>
 #include <memory>
+
+#include "Math/Vector3.h"
+#include "Math/Matrix4x4.h"
 
 class FrameBuffer;
 
 /// @class ShadowPass
-/// @brief Passe de rendu pour générer la shadow map directionnelle
-
-// Cette passe effectue un rendu de la scène depuis le POV de la lumière
-// dans une texture de profondeur.
-
-// Pour éviter les artefacts, on utilise glPolygonOffset (biais matériel) et le culling des faces avant
+/// @brief Passe de rendu pour générer les shadow maps directionnelles en Cascaded Shadow Mapping (CSM)
+/// Cette passe découpe le frustum de la caméré en NUM_CASCADES sous-frustums, calcule une projection orthographique
+/// ajustée pour chacun, puis rend toute la scène dans un GL_TEXTURE_2D_ARRAY via un geometry shader qui route chaque triangle vers le layer approprié.
 class ShadowPass : public IRenderPass
 {
 public:
-    /// @brief Constructeur
     ShadowPass();
-    /// @brief Destructeur
     ~ShadowPass();
-    /// @brief Exécute la passe de shadow mapping
-    /// @param data Données de rendu de la scène & paramètres
+
     void Execute(RenderData &data) override;
 
-    /// @brief Vérifie si les ombres sont activées dans les settings
-    /// @param settings 
-    /// @return 
-    bool isEnabled(const RenderSettings &settings) const override {
+    bool isEnabled(const RenderSettings &settings) const override
+    {
         return settings.enableShadows;
     }
 
 private:
-    /// @brief Framebuffer dédié au rendu de la shadow map
     std::unique_ptr<FrameBuffer> m_shadowFBO;
+
+    /// @brief Calcule les 8 coins world-space d'un sous-frustum défini par nearPlane, farPlane
+    /// @param view
+    /// @param fovY
+    /// @param aspect
+    /// @param nearPlane
+    /// @param farPlane
+    /// @return
+    std::vector<Vector3> GetFrustumCornersWorldSpace(
+        const Matrix4x4 &view,
+        float fovY, float aspect,
+        float nearPlane, float farPlane) const;
+
+    /// @brief Construit la matrice lightView * lightProjection pour une cascade donnée
+    /// @details Calcule l'AABB des coins du frustum dans l'espace lumière, construit une projection orthographique ajustée au plus serré, puis
+    /// Applique un textel snapping pour éviter le shadow swimming lors de mouvements de la caméra.
+    /// @param frustumCorners les 8 coins world-space du sous-frustum de la cascade
+    /// @param lightDir la direction normalisée de la lumière (forward du transform)
+    /// @param shadowResolution résolution de la shadow map (pour le textel snapping)
+    /// @return la matrice combinée lightProjection * lightView pour cette cascade
+    Matrix4x4 ComputeCascadeMatrix(
+        const std::vector<Vector3> &frustumCorners,
+        const Vector3 &lightDir,
+        unsigned int shadowResolution) const;
 };

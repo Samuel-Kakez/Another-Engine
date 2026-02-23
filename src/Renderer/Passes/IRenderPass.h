@@ -45,8 +45,11 @@ struct RenderData
 
     DirectionalLight *directionalLight = nullptr;
 
-    /// @brief Matrice projection ortho * vue lumière
-    Matrix4x4 lightSpaceMatrix;
+    /// @brief Matrices light-space pour chaque cascade (VP lumière)
+    Matrix4x4 lightSpaceMatrices[4];
+
+    /// @brief Distances des plans de séparation des cascades (clip-space Z)
+    float cascadePlaneDistances[4] = {};
 
     const RenderSettings *renderSettings = nullptr;
 };
