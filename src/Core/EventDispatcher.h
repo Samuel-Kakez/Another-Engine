@@ -42,7 +42,8 @@ public:
         auto it = m_subscribers.find(std::type_index(typeid(T)));
         if (it != m_subscribers.end())
         {
-            for (const auto &subscriber : it->second)
+            auto subscriberSnapshot = it->second;
+            for (const auto &subscriber : subscriberSnapshot)
             {
                 subscriber.callback(event);
             }

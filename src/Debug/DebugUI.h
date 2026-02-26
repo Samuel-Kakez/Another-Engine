@@ -52,7 +52,7 @@ public:
 private:
     // variables pour le lissage
     float m_smoothedDeltaTime = 0.0f;
-    float m_isFirstFrame = true;
+    bool m_isFirstFrame = true;
 
     // filtres pour la fenêtre de logs
     ImGuiTextFilter m_logFilter;

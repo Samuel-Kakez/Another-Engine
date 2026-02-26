@@ -45,7 +45,7 @@ public:
      * Cette matrice représente la transformation de l'objet par rapport à son parent.
      * @return Matrix4x4 La matrice locale combinée
      */
-    Matrix4x4 getLocalMatrix() const;
+    Matrix4x4 GetLocalMatrix() const;
 
     /**
      * @brief Calcule et retourne la matrice modèle (Model Matrix) de l'objet dans l'espace Monde.
@@ -53,7 +53,7 @@ public:
      * C'est cette matrice qu'on envoie au shader pour le rendu. On retourne une ref constante désormais
      * @return Matrix4x4 La matrice monde combinée
      */
-    const Matrix4x4& getWorldMatrix() const;
+    const Matrix4x4& GetWorldMatrix() const;
 
     /**
      * @brief Définit le parent de ce Transform
@@ -78,7 +78,7 @@ public:
      */
     const std::vector<Transform *> &GetChildren() const { return m_children; }
 
-    Vector3 getWorldPosition() const;
+    Vector3 GetWorldPosition() const;
 
 private:
     // --- Données de transformation locale (maintenant privées) ---

@@ -31,7 +31,7 @@ private:
     float m_lookSensitivity;
 
     // État interne
-    bool m_isInitialized = false;
+    bool m_IsInitialized = false;
     bool m_isControlEnabled = false;
     float m_yaw = 0.0f;
     float m_pitch = 0.0f;

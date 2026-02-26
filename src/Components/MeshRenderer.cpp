@@ -21,7 +21,7 @@ namespace
             return nullptr;
         }
 
-        ResourceManager &resourceManager = owner->m_ownerScene->GetResourceManager();
+        ResourceManager &resourceManager = owner->GetScene().GetResourceManager();
         Model *model = resourceManager.GetModel(modelPath);
         if (!model || model->meshes.empty())
         {

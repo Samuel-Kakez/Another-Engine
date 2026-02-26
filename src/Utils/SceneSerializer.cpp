@@ -54,7 +54,12 @@ bool SceneSerializer::Deserialize(const std::string &filepath)
     }
     catch (json::parse_error &e)
     {
-        LOG_ERROR("échec de parsing JSON - %s", e.what());
+        LOG_ERROR("JSON invalide pendant la désérialisation - %s", e.what());
+        return false;
+    }
+    catch (const json::exception &e)
+    {
+        LOG_ERROR("Erreur JSON pendant la désérialisation - %s", e.what());
         return false;
     }
 
@@ -66,7 +71,7 @@ bool SceneSerializer::Deserialize(const std::string &filepath)
 
     // 4. Parser la section "materials".
 
-    if (data.contains("materials"))
+    if (data.contains("materials") && data["materials"].is_array())
     {
         for (const auto &materialData : data["materials"])
         {
@@ -117,17 +122,9 @@ bool SceneSerializer::Deserialize(const std::string &filepath)
         }
     }
 
-    // 5. Parser la section settings
-
-    if (data.contains("settings"))
-    {
-        const json &settings = data["settings"];
-        RenderSettings &renderSettings = m_scene.GetRenderSettings();
-    }
-
-    // 6. Parser la section gameObjects
-
-    if (data.contains("gameObjects"))
+    // 5. Parser la section gameObjects
+    std::vector<std::pair<std::string, std::string>> pendingParentLinks;
+    if (data.contains("gameObjects") && data["gameObjects"].is_array())
     {
         for (const auto &goData : data["gameObjects"])
         {
@@ -135,7 +132,7 @@ bool SceneSerializer::Deserialize(const std::string &filepath)
             std::string goName = goData.value("name", "Unnamed GameObject");
             GameObject *newGameObject = m_scene.AddGameObject(goName);
 
-            if (goData.contains("components"))
+            if (goData.contains("components") && goData["components"].is_array())
             {
                 for (const auto &compData : goData["components"])
                 {
@@ -150,36 +147,45 @@ bool SceneSerializer::Deserialize(const std::string &filepath)
 
             if (goData.contains("parent"))
             {
-                std::string parentName = goData["parent"];
-                GameObject *parentGO = m_scene.FindGameObjectByName(parentName);
-                if (parentGO)
+                std::string parentName = goData.value("parent", "");
+                if (!parentName.empty())
                 {
-                    // On récupère les composants Transform des deux objets
-                    Transform *childTransform = newGameObject->GetComponent<Transform>();
-                    Transform *parentTransform = parentGO->GetComponent<Transform>();
-
-                    if (childTransform && parentTransform)
-                    {
-                        // On établit la relation
-                        childTransform->SetParent(parentTransform);
-                    }
-                    else
-                    {
-                        LOG_WARN("parenté impossible - Transform manquant sur '%s' ou '%s'.", goName.c_str(), parentName.c_str());
-                    }
-                }
-                else
-                {
-                    LOG_WARN("parent '%s' introuvable pour l'objet '%s'.", parentName.c_str(), goName.c_str());
+                    pendingParentLinks.push_back({goName, parentName});
+                    LOG_TRACE("lien parent en attente ajouté : enfant='%s', parent='%s'.", goName.c_str(), parentName.c_str());
                 }
             }
+        }
+    }
 
-            // publie un événement pour notifier les systèmes que l'objet est prêt
-            m_scene.GetEventDispatcher().publish(GameObjectInitializedEvent(newGameObject));
+    LOG_TRACE("résolution des parentés en attente (%zu liens).", pendingParentLinks.size());
+
+    for (const auto &[childName, parentName] : pendingParentLinks)
+    {
+        GameObject *childGO = m_scene.FindGameObjectByName(childName);
+        GameObject *parentGO = m_scene.FindGameObjectByName(parentName);
+
+        if (!childGO || !parentGO)
+        {
+            LOG_WARN("parenté impossible - parent '%s' ou enfant '%s' introuvable", parentName.c_str(), childName.c_str());
+            continue;
+        }
+
+        Transform *childTransform = childGO->GetComponent<Transform>();
+        Transform *parentTransform = parentGO->GetComponent<Transform>();
+
+        if (childTransform && parentTransform)
+        {
+            childTransform->SetParent(parentTransform);
+        }
+        else
+        {
+            LOG_WARN("parenté impossible - Transform manquant sur '%s' ou '%s'", childName.c_str(), parentName.c_str());
         }
     }
     size_t goCount = data.contains("gameObjects") ? data["gameObjects"].size() : 0;
     LOG_INFO("scène chargée - %zu GameObjects créés.", goCount);
 
+    LOG_TRACE("flush d'initialisation des objets après chargement de la scène.");
+    m_scene.FlushPendingInitialization();
     return true;
 }

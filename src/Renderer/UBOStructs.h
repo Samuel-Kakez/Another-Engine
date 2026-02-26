@@ -11,6 +11,6 @@ struct MatricesUBO
 {
     Matrix4x4 projection;
     Matrix4x4 view;
-    Matrix4x4 inverseView;
     Matrix4x4 inverseProjection;
+    Matrix4x4 inverseView;
 };

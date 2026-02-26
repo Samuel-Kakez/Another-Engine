@@ -1,5 +1,3 @@
-#define STB_IMAGE_IMPLEMENTATION
-
 #include "Renderer/Texture.h"
 #include "Managers/ResourceManager.h"
 #include "Debug/Logger.h"
@@ -43,6 +41,11 @@ Shader *ResourceManager::GetShader(const std::string &name, const std::string &v
         {
             // sans geometry shader
             newShader = std::make_unique<Shader>(vShaderFile.c_str(), fShaderFile.c_str());
+        }
+        if (!newShader || !newShader->IsValid())
+        {
+            LOG_ERROR("shader '%s' invalide, non chargé", name.c_str());
+            return nullptr;
         }
 
         Shader *ptr = newShader.get(); // On garde le pointeur avant le std::move
@@ -98,6 +101,12 @@ Texture *ResourceManager::GetTexture(const std::string &name, const std::string 
         if (nrChannels == 1)
         {
             internalFormat = GL_RED;
+            dataFormat = GL_RED;
+        }
+        else if (nrChannels == 2)
+        {
+            internalFormat = GL_RG;
+            dataFormat = GL_RG;
         }
         else if (nrChannels == 3)
         {
@@ -108,6 +117,12 @@ Texture *ResourceManager::GetTexture(const std::string &name, const std::string 
         {
             internalFormat = srgb ? GL_SRGB_ALPHA : GL_RGBA;
             dataFormat = GL_RGBA;
+        }
+        else
+        {
+            LOG_ERROR("format texture non supporté (%d canaux) pour '%s'", nrChannels, path.c_str());
+            stbi_image_free(data);
+            return nullptr;
         }
 
         glGenTextures(1, &newTexture->ID);
@@ -133,6 +148,8 @@ Texture *ResourceManager::GetTexture(const std::string &name, const std::string 
     else
     {
         LOG_ERROR("échec du chargement de la texture '%s'.", path.c_str());
+        stbi_image_free(data);
+        return nullptr; // On ne cache pas une texture en échec
     }
     stbi_image_free(data); // Libère la mémoire de l'image
 
@@ -173,9 +190,13 @@ void ResourceManager::Clear()
     // L'appel à .clear() surla map détruit tous les éléments qu'elle contient.
     // En détruisant chaque std::unique_ptr, le destructeur de ce dernier est appelé, ce qui libère la mémoire automatiquement.
     // plus besoin de boucler et de delete manuellement.
-
+    m_Materials.clear();
+    LOG_INFO("matériaux libérés.");
     m_Shaders.clear(); // Vide la carte des shaders
-    m_Models.clear();  // vide la carte des modèles
+    LOG_INFO("shaders libérés.");
+    m_Models.clear(); // vide la carte des modèles
+    LOG_INFO("models libérés.");
     m_Textures.clear();
+    LOG_INFO("textures libérées.");
     LOG_INFO("toutes les ressources ont été libérées.");
 }

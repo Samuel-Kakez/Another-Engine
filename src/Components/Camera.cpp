@@ -15,20 +15,30 @@ Camera::Camera()
 
 Vector3 Camera::GetPosition() const
 {
-    Transform *tr = gameObject->GetComponent<Transform>();
-    return tr->getWorldPosition();
+    Transform *tr = gameObject ? gameObject->GetComponent<Transform>() : nullptr;
+    // warn ?
+    return tr ? tr->GetWorldPosition() : Vector3(0.0f, 0.0f, 0.0f);
 }
 
 Quaternion Camera::GetOrientation() const
 {
-    Transform *tr = gameObject->GetComponent<Transform>();
-    return tr->GetOrientation();
+    Transform *tr = gameObject ? gameObject->GetComponent<Transform>() : nullptr;
+    return tr ? tr->GetOrientation() : Quaternion();
 }
 
 Matrix4x4 Camera::GetViewMatrix() const
 {
-    Transform *tr = gameObject->GetComponent<Transform>();
-    Vector3 position = tr->getWorldPosition();
+    Transform *tr = gameObject ? gameObject->GetComponent<Transform>() : nullptr;
+    if(!tr){
+        // warn
+        return Matrix4x4::CreateLookAt(
+            Vector3(0.0f, 0.0f, 0.0f),
+            Vector3(0.0f, 0.0f, -1.0f),
+            Vector3(0.0f, 1.0f, 0.0f)
+        );
+    }
+
+    Vector3 position = tr->GetWorldPosition();
     Quaternion orientation = tr->GetOrientation();
 
     Vector3 front = orientation * Vector3(0, 0, -1);

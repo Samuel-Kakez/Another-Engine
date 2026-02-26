@@ -3,7 +3,7 @@
 
 Mesh::Mesh(const std::vector<Vertex> &vertices, const std::vector<unsigned int> &indices)
 {
-    this->indexCount = indices.size();
+    this->indexCount = static_cast<unsigned int>(indices.size());
     setupMesh(vertices, indices);
 }
 
@@ -31,13 +31,19 @@ void Mesh::setupMesh(const std::vector<Vertex> &vertices, const std::vector<unsi
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
 
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), &vertices[0], GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER,
+                 vertices.size() * sizeof(Vertex),
+                 vertices.empty() ? nullptr : vertices.data(),
+                 GL_STATIC_DRAW);
 
     // configuration de l'EBO (données des indices)
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), &indices[0], GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+                 indices.size() * sizeof(unsigned int),
+                 indices.empty() ? nullptr : indices.data(),
+                 GL_STATIC_DRAW);
 
     // --- 3. Définition des attributs de sommets ---
 

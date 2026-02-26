@@ -24,8 +24,7 @@ public:
 	/// @brief Identifiant OpenGL de la shadow map array (GL_TEXTURE_2D_ARRAY, NUM_CASCADES layers)
 	/// Initialisé à 0, créé par LightManager::CreateShadowResourcesFor()
 	unsigned int shadowMapArray = 0;
-	/// @brief Constructeur par défaut
-	DirectionalLight();
+
 	/// @param intensity 
 	/// @param castsShadows 
 	/// @param shadowResolution 

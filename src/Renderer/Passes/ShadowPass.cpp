@@ -85,7 +85,7 @@ Matrix4x4 ShadowPass::ComputeCascadeMatrix(
     center = Vector3(center.x * inv, center.y * inv, center.z * inv);
 
     // --- Étape 2 : Matrice de vue lumière ---
-    // Choix du vecteur up : si la lumière est quasi-verticale, on utilise Z comme up 
+    // Choix du vecteur up : si la lumière est quasi-verticale, on utilise Z comme up
     // pour éviter la dégénerescence du cross product (à creuser personnellement, ca m'intéresse!)
     Vector3 lightUp;
     if (std::abs(lightDir.y) > 0.99f)
@@ -200,7 +200,7 @@ Matrix4x4 ShadowPass::ComputeCascadeMatrix(
 /// 4. Attachement du GL_TEXTURE_2D_ARRAY au FBO (toutes les couches d'un coup)
 /// 5. Envoi des 4 matrices au geometry shader qui route vers gl_Layer
 /// 6. Rendu de tous les objets (pas de frustum culling par cascade pour simplicité)
-/// @param data 
+/// @param data
 void ShadowPass::Execute(RenderData &data)
 {
     DirectionalLight *light = data.directionalLight;
@@ -236,7 +236,11 @@ void ShadowPass::Execute(RenderData &data)
     // --- Construction des 4 matrices light-space ---
     // Chaque cascade couvre [splitNear, splitFar] du frustum caméra
     Transform *lightTransform = light->gameObject->GetComponent<Transform>();
-    Vector3 lightDir = lightTransform->getWorldMatrix().GetForward();
+    if (!lightTransform)
+    {
+        return;
+    }
+    Vector3 lightDir = lightTransform->GetWorldMatrix().GetForward();
     lightDir.Normalize();
 
     float aspect = static_cast<float>(data.screenWidth) / static_cast<float>(data.screenHeight);
@@ -272,7 +276,13 @@ void ShadowPass::Execute(RenderData &data)
     m_shadowFBO->Bind();
 
     glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, light->shadowMapArray, 0);
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    {
+        m_shadowFBO->Unbind();
+        return;
+    }
     glDrawBuffer(GL_NONE);
+
     glReadBuffer(GL_NONE);
     glViewport(0, 0, light->shadowResolution, light->shadowResolution);
     glClear(GL_DEPTH_BUFFER_BIT);
@@ -285,13 +295,13 @@ void ShadowPass::Execute(RenderData &data)
     // Envoi des matrices au geometry shader
     for (int i = 0; i < DirectionalLight::NUM_CASCADES; ++i)
     {
-        shadowShader->setMat4("lightSpaceMatrices[" + std::to_string(i) + "]", data.lightSpaceMatrices[i]);
+        shadowShader->SetMat4("lightSpaceMatrices[" + std::to_string(i) + "]", data.lightSpaceMatrices[i]);
     }
 
-    // Rendu de tous les objets de la scène 
+    // Rendu de tous les objets de la scène
     for (const auto &renderable : *data.allRenderables)
     {
-        shadowShader->setMat4("model", renderable.transform->getWorldMatrix());
+        shadowShader->SetMat4("model", renderable.transform->GetWorldMatrix());
         renderable.meshRenderer->mesh->Draw();
     }
 

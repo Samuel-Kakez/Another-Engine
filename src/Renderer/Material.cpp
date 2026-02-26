@@ -21,33 +21,33 @@ void Material::Bind() const
     shader->Use();
 
     // Liaison des valeurs PBR
-    shader->setVec3("material.albedo", albedoColor);
-    shader->setFloat("material.metallic", metallic);
-    shader->setFloat("material.roughness", roughness);
-    shader->setFloat("material.normalMapIntensity", normalMapIntensity);
-    shader->setVec2("tiling", tiling);
+    shader->SetVec3("material.albedo", albedoColor);
+    shader->SetFloat("material.metallic", metallic);
+    shader->SetFloat("material.roughness", roughness);
+    shader->SetFloat("material.normalMapIntensity", normalMapIntensity);
+    shader->SetVec2("tiling", tiling);
 
     if (albedoTexture)
     {
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, albedoTexture->ID);
-        shader->setInt("material.albedoTexture", 0);
-        shader->setBool("material.hasAlbedoTexture", true);
+        shader->SetInt("material.albedoTexture", 0);
+        shader->SetBool("material.hasAlbedoTexture", true);
     }
     else
     {
-        shader->setBool("material.hasAlbedoTexture", false);
+        shader->SetBool("material.hasAlbedoTexture", false);
     }
 
     if (normalTexture)
     {
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, normalTexture->ID);
-        shader->setInt("material.normalTexture", 1);
-        shader->setBool("material.hasNormalTexture", true);
+        shader->SetInt("material.normalTexture", 1);
+        shader->SetBool("material.hasNormalTexture", true);
     }
     else
     {
-        shader->setBool("material.hasNormalTexture", false);
+        shader->SetBool("material.hasNormalTexture", false);
     }
 }

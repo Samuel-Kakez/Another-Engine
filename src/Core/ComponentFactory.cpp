@@ -11,7 +11,7 @@ ComponentFactory &ComponentFactory::Instance()
 
 void ComponentFactory::RegisterComponent(const std::string &typeName, ComponentCreator creator)
 {
-    LOG_INFO("enregistrement du type '%s'.", typeName.c_str());
+    LOG_INFO("type de composant '%s' enregistré dans la factory.", typeName.c_str());
     // On associe le nom du type à sa fonction de création dans la map
     m_creators[typeName] = creator;
 }

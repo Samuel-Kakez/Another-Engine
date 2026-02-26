@@ -11,7 +11,6 @@
 #include "Core/Scene.h"
 #include "Core/Event.h"
 #include "Core/EventDispatcher.h"
-#include "Core/Event.h"
 
 /**
  * @brief L'entité de base dans la scène
@@ -76,19 +75,43 @@ public:
         return nullptr;
     }
 
+    /// @brief Récupère tous les composants d'un type donné, avec support du polymorphisme
+    /// @tparam T le type du composant à chercher
+    /// @return un vecteur de pointeurs vers tous les composants du type T
+    template <typename T>
+    std::vector<T *> GetComponents()
+    {
+        std::vector<T *> results;
+        for (const auto &component : m_components)
+        {
+            T *result = dynamic_cast<T *>(component.get());
+            if (result != nullptr)
+            {
+                results.push_back(result);
+            }
+        }
+        return results;
+    }
+
     /**
      * @brief Marque cet objet pour qu'il soit détruit à la fin de la frame
      *
      */
-    void Destroy() { m_isPendingKill = true; }
+    void Destroy() { m_lifecycleState = LifecycleState::PendingDestroy; }
 
     /**
      * @brief Vérifie si l'objet est en attente de destruction
-     *
-     * @return true si marqué en attente de destruction
-     * @return false sinon
      */
-    bool IsPendingKill() const { return m_isPendingKill; }
+    bool IsPendingKill() const { return m_lifecycleState == LifecycleState::PendingDestroy; }
+
+    bool IsInitialized() const { return m_lifecycleState == LifecycleState::Initialized; }
+    void MarkInitialized()
+    {
+        if (m_lifecycleState == LifecycleState::Constructing)
+        {
+            m_lifecycleState = LifecycleState::Initialized;
+        }
+    }
 
     /**
      * @brief Le nom du GameObject, pour identification
@@ -99,14 +122,6 @@ public:
     Scene &GetScene() const { return *m_ownerScene; }
 
     /**
-     * @brief Pointeur non-propriétaire vers la scène qui contient de GameObject.
-     * @details Permet à l'objet et à ses composants de communiquer avec les systèmes de la scène
-     * ex : pour s'enregistrer auprès d'un manager
-     *
-     */
-    Scene *m_ownerScene = nullptr;
-
-    /**
      * @brief Appelle la méthode FixedUpdate() de tous les composants attachés
      *
      * @param fixedDeltaTime Le pas de temps fixe
@@ -114,15 +129,27 @@ public:
     void FixedUpdate(float fixedDeltaTime);
 
 private:
+    friend class Scene;
+    /**
+     * @brief Pointeur non-propriétaire vers la scène qui contient de GameObject.
+     * @details Permet à l'objet et à ses composants de communiquer avec les systèmes de la scène
+     * ex : pour s'enregistrer auprès d'un manager
+     *
+     */
+    Scene *m_ownerScene = nullptr;
     // une liste pour un parcours rapide (pour Update)
     std::vector<std::unique_ptr<Component>> m_components;
     // une carte pour une recherche rapide par type, en utilisant type_index comme clé
     std::map<std::type_index, Component *> m_componentMap;
-    // flag pour suppression différée
-    bool m_isPendingKill = false;
 
-    // Drapeau indiquant si cet objet a été envoyé au Renderer
-    bool m_isRegisteredForRender = false;
+    enum class LifecycleState
+    {
+        Constructing,
+        Initialized,
+        PendingDestroy
+    };
+
+    LifecycleState m_lifecycleState = LifecycleState::Constructing;
 };
 
 /**
@@ -144,18 +171,13 @@ T *GameObject::AddComponent(Args &&...args)
     T *ptr = newComponent.get();
     ptr->gameObject = this;
 
-    // Ajout à la map pour la recherche rapide (pointeur non-propriétaire)
     m_componentMap[std::type_index(typeid(T))] = ptr;
+    m_components.push_back(std::move(newComponent));
 
     if (m_ownerScene)
     {
-        // l'ancien appel à notifyComponentAdded est remplacé par une publication d'événement.
-
         m_ownerScene->GetEventDispatcher().publish(ComponentAddedEvent(ptr));
     }
-
-    // on déplace la propriété du unique_ptr dans notre vecteur de stockage
-    m_components.push_back(std::move(newComponent));
 
     return ptr;
 }

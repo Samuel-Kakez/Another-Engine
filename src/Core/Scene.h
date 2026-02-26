@@ -83,8 +83,8 @@ public:
     Camera *GetCamera() const { return m_camera; }
 
     /// @brief Définit la cam active de la scène
-    /// @param camera 
-    void SetActiveCamera(Camera* camera) {m_camera = camera;}
+    /// @param camera
+    void SetActiveCamera(Camera *camera) { m_camera = camera; }
 
     /**
      * @brief Fournit un accès en lecture seule à la liste des gameObjects
@@ -142,6 +142,15 @@ public:
      */
     void FixedUpdate(float fixedDeltaTime);
 
+    /**
+     * @brief Active les GameObjects en attente de finalisation
+     * @details 
+     * Passe les objets de l'état Constructing à Initialized, puis publie
+     * GameObjectInitializedEvent pour les systèmes
+     * Les objets absents de la scène ou marqués PendingDestroy sont ignorés.
+     */
+    void FlushPendingInitialization();
+
     const RenderSettings &GetRenderSettings() const { return renderSettings; }
     RenderSettings &GetRenderSettings() { return renderSettings; }
 
@@ -152,7 +161,7 @@ private:
 
     // La scène est propriétaire des GameObjects
     std::vector<std::unique_ptr<GameObject>> m_gameObjects;
-    Camera* m_camera = nullptr;
+    Camera *m_camera = nullptr;
 
     // La scène possède le dispatcher
     std::unique_ptr<EventDispatcher> m_eventDispatcher;
@@ -168,4 +177,6 @@ private:
      *
      */
     void ProcessDestruction();
+
+    std::vector<GameObject*> m_pendingInitialization;
 };

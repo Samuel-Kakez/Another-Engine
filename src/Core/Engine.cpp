@@ -22,10 +22,16 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 Engine::Engine() : m_window(nullptr)
 {
     // Phase 1 : Initialisation
-    glfwInit();
-    LOG_INFO("GLFW initialisé (OpenGL3.3 Core).");
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    if (!glfwInit())
+    {
+        LOG_ERROR("Échec de l'initialisation de GLFW.");
+        return;
+    }
+    m_glfwInitialized = true;
+    LOG_INFO("GLFW initialisé (OpenGL4.0 Core).");
+
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
@@ -33,15 +39,18 @@ Engine::Engine() : m_window(nullptr)
 
     GLFWmonitor *monitor = glfwGetPrimaryMonitor();
     const GLFWvidmode *mode = glfwGetVideoMode(monitor);
-    LOG_INFO("fenêtre créée (%dx%d.)", mode->width, mode->height);
     m_window = glfwCreateWindow(mode->width, mode->height, "Another Engine", monitor, nullptr);
 
     if (m_window == NULL)
     {
         LOG_ERROR("Échec de la création de la fenêtre GLFW.");
         glfwTerminate();
+        m_glfwInitialized = false;
         return;
     }
+
+    m_windowCreated = true;
+    LOG_INFO("fenêtre créée (%dx%d).", mode->width, mode->height);
 
     glfwMakeContextCurrent(m_window);
     glfwSwapInterval(1); // V-Sync
@@ -53,8 +62,20 @@ Engine::Engine() : m_window(nullptr)
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
         LOG_ERROR("Échec de l'initialisation de GLAD.");
+        if (m_windowCreated && m_window)
+        {
+            glfwDestroyWindow(m_window);
+            m_window = nullptr;
+            m_windowCreated = false;
+        }
+        if (m_glfwInitialized)
+        {
+            glfwTerminate();
+            m_glfwInitialized = false;
+        }
         return;
     }
+    m_glContextReady = true;
     LOG_INFO("GLAD initialisé.");
 
     // On récupère la taille réelle du framebuffer
@@ -98,14 +119,32 @@ Engine::Engine() : m_window(nullptr)
 Engine::~Engine()
 {
     LOG_INFO("arrêt en cours, nettoyage des ressources...");
-    // --- Nettoyage ---
-    // On vide les managers explicitement avant la destruction de GLFW
-    m_resourceManager->Clear();
-    m_debugUI.reset();
 
-    // la destruction des unique_ptr se fait automatiquement ici
-    // libère la mémoire de Scene, Renderer, etc
-    glfwTerminate();
+    m_debugUI.reset();
+    m_renderer.reset();
+    m_lightManager.reset();
+    m_scene.reset();
+
+    if (m_resourceManager)
+    {
+        m_resourceManager->Clear();
+        m_resourceManager.reset();
+    }
+
+    m_inputManager.reset();
+
+    if (m_windowCreated && m_window)
+    {
+        glfwDestroyWindow(m_window);
+        m_window = nullptr;
+        m_windowCreated = false;
+    }
+
+    if (m_glfwInitialized)
+    {
+        glfwTerminate();
+        m_glfwInitialized = false;
+    }
 }
 
 void Engine::Run()
@@ -160,8 +199,16 @@ void Engine::Run()
             accumulator -= fixedDeltaTime;
         }
 
+        m_scene->FlushPendingInitialization();
         // logique non-critique qui peut dépendre du framerate
         m_scene->Update(static_cast<float>(frameTime));
+        m_scene->FlushPendingInitialization();
+
+        if (m_resizePending)
+        {
+            glViewport(0, 0, m_pendingWidth, m_pendingHeight);
+            m_resizePending = false;
+        }
 
         // Rendu (une seule fois par frame, peu importe le nombre de FixedUpdate)
         m_renderer->Render(*m_scene, m_window);
@@ -180,15 +227,20 @@ void Engine::Run()
     }
 }
 
+void Engine::RequestResize(int width, int height)
+{
+    m_resizePending = true;
+    m_pendingWidth = width;
+    m_pendingHeight = height;
+}
+
 void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 {
-    glViewport(0, 0, width, height);
-
     // On force le rendu d'une frame lors du resize
     Engine *engine = static_cast<Engine *>(glfwGetWindowUserPointer(window));
     if (engine)
     {
-        engine->RenderOneFrame();
+        engine->RequestResize(width, height);
     }
 }
 

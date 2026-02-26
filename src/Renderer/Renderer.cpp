@@ -37,6 +37,10 @@ Renderer::Renderer(ResourceManager &resourceManager, EventDispatcher &dispatcher
                                                   { this->OnComponentAdded(event); }));
 
     m_subscriptionIDs.push_back(
+        dispatcher.subscribe<GameObjectInitializedEvent>([this](const GameObjectInitializedEvent &event)
+                                                         { this->OnGameObjectInitialized(event); }));
+
+    m_subscriptionIDs.push_back(
         dispatcher.subscribe<GameObjectWillBeDestroyedEvent>([this](const GameObjectWillBeDestroyedEvent &event)
                                                              { this->OnGameObjectDestroyed(event); }));
 
@@ -55,7 +59,19 @@ Renderer::Renderer(ResourceManager &resourceManager, EventDispatcher &dispatcher
 
     // On lie les blocs uniformes de nos shaders aux mêmes binding points.
     Shader *lightingShader = resourceManager.GetShader("lighting");
-    glUniformBlockBinding(lightingShader->ID, glGetUniformBlockIndex(lightingShader->ID, "Matrices"), 0);
+    if (!lightingShader)
+    {
+        LOG_ERROR("shader 'lighting' introuvable ou invalide.");
+        return;
+    }
+
+    GLuint matricesBlockIndex = glGetUniformBlockIndex(lightingShader->ID, "Matrices");
+    if (matricesBlockIndex == GL_INVALID_INDEX)
+    {
+        LOG_ERROR("bloc UBO 'Matrices' introuvable dans shader 'lighting'.");
+        return;
+    }
+    glUniformBlockBinding(lightingShader->ID, matricesBlockIndex, 0);
 
     // Initialisation des passes de rendu
     m_renderPasses.clear();
@@ -69,13 +85,46 @@ Renderer::Renderer(ResourceManager &resourceManager, EventDispatcher &dispatcher
 
 void Renderer::OnComponentAdded(const ComponentAddedEvent &event)
 {
+    if (!event.component || !event.component->gameObject || !event.component->gameObject->IsInitialized() || event.component->gameObject->IsPendingKill())
+    {
+        return;
+    }
+
     // On ne réagit que quand on a un MeshRenderer
     if (MeshRenderer *mr = dynamic_cast<MeshRenderer *>(event.component))
     {
         // On s'assure que le gameobject a un transform
         Transform *transform = mr->gameObject->GetComponent<Transform>();
-
+        if (!transform || !mr->mesh || !mr->material)
+        {
+            // warning
+            return;
+        }
         RegisterRenderable(transform, mr);
+    }
+}
+
+void Renderer::OnGameObjectInitialized(const GameObjectInitializedEvent &event)
+{
+    if (!event.gameObject || event.gameObject->IsPendingKill())
+    {
+        return;
+    }
+
+    LOG_TRACE("événement d'initialisation reçu pour l'objet '%s'.", event.gameObject->name.c_str());
+
+    Transform *transform = event.gameObject->GetComponent<Transform>();
+    if (!transform)
+    {
+        return;
+    }
+
+    for (MeshRenderer *mr : event.gameObject->GetComponents<MeshRenderer>())
+    {
+        if (mr && mr->mesh && mr->material)
+        {
+            RegisterRenderable(transform, mr);
+        }
     }
 }
 
@@ -85,6 +134,7 @@ void Renderer::OnGameObjectDestroyed(const GameObjectWillBeDestroyedEvent &event
     {
         std::erase_if(m_renderables, [gameObject = event.gameObject](const Renderable &renderable)
                       { return renderable.meshRenderer->gameObject == gameObject; });
+        LOG_TRACE("objets de rendu désenregistrés pour '%s'.", event.gameObject->name.c_str());
     }
 }
 
@@ -101,8 +151,18 @@ Renderer::~Renderer()
 
 void Renderer::RegisterRenderable(Transform *transform, MeshRenderer *meshRenderer)
 {
-    // on ajoute simplement les pointeurs vers les composants dans notre liste interne
+
+    const bool alreadyRegistered = std::any_of(
+        m_renderables.begin(), m_renderables.end(),
+        [meshRenderer](const Renderable &r)
+        { return r.meshRenderer == meshRenderer; });
+    if (alreadyRegistered)
+    {
+        LOG_TRACE("enregistrement du rendu ignoré : '%s' est déjà enregistré.", meshRenderer->gameObject ? meshRenderer->gameObject->name.c_str() : "Inconnu");
+        return;
+    }
     m_renderables.push_back({transform, meshRenderer});
+    LOG_TRACE("objet '%s' enregistré pour le rendu (total=%zu).", meshRenderer->gameObject ? meshRenderer->gameObject->name.c_str() : "Inconnu", m_renderables.size());
 }
 
 void Renderer::Render(Scene &scene, GLFWwindow *window)
@@ -110,11 +170,26 @@ void Renderer::Render(Scene &scene, GLFWwindow *window)
     // -- 1. Préparation des données communes pour la frame --
     Camera *camera = scene.GetCamera();
     if (!camera)
+    {
+        // ajouter un warn
         return;
+    }
 
     // taille de la fenêtre initiale
     int screenWidth, screenHeight;
     glfwGetFramebufferSize(window, &screenWidth, &screenHeight);
+
+    if (screenWidth <= 0 || screenHeight <= 0)
+    {
+        // ajouter un warn
+        return;
+    }
+
+    if (camera->GetNearPlane() <= 0.0f || camera->GetFarPlane() <= camera->GetNearPlane())
+    {
+        // ajouter un warn
+        return;
+    }
 
     // Calcul des matrices de la caméra initiale
     Matrix4x4 projection = Matrix4x4::CreatePerspectiveProjection(camera->GetFov(), (float)screenWidth / (float)screenHeight, camera->GetNearPlane(), camera->GetFarPlane());
@@ -151,8 +226,19 @@ void Renderer::Render(Scene &scene, GLFWwindow *window)
     const Frustum &cameraFrustum = camera->GetFrustum();
     for (const auto &renderable : m_renderables)
     {
+
+        if (!renderable.meshRenderer || !renderable.meshRenderer->gameObject)
+        {
+            continue;
+        }
+
+        if (renderable.meshRenderer->gameObject->IsPendingKill())
+        {
+            continue;
+        }
+
         // On calcule la worldAABB Une seule fois
-        AABB worldAABB = renderable.meshRenderer->mesh->GetAABB().Transform(renderable.transform->getWorldMatrix());
+        AABB worldAABB = renderable.meshRenderer->mesh->GetAABB().Transform(renderable.transform->GetWorldMatrix());
 
         // On teste contre le frustum de la caméra
         if (cameraFrustum.Intersects(worldAABB))

@@ -64,7 +64,7 @@ private:
 
     // --- données du maillage ---
     // Il est utile de garder une trace du nombre d'indices pour l'appel de dessin
-    size_t indexCount;
+    unsigned int indexCount;
 
     // Volume local du maillage
     AABB aabb;

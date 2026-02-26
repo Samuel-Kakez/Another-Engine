@@ -9,6 +9,7 @@
 class DirectionalLight;
 struct ComponentAddedEvent;
 struct GameObjectWillBeDestroyedEvent;
+struct GameObjectInitializedEvent;
 struct SceneClearedEvent;
 
 /**
@@ -74,6 +75,7 @@ private:
     // Callbacks pour réagir aux événements.
     void OnComponentAdded(const ComponentAddedEvent &event);
     void OnGameObjectDestroyed(const GameObjectWillBeDestroyedEvent &event);
+    void OnGameObjectInitialized(const GameObjectInitializedEvent& event);
 
     // Stockage pour le désabonnement 
     EventDispatcher* m_dispatcher = nullptr;

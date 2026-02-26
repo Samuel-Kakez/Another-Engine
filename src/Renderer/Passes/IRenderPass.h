@@ -5,6 +5,7 @@
 #include "Math/Matrix4x4.h"
 #include "Math/AABB.h"
 #include "Renderer/RenderSettings.h"
+#include "Components/DirectionalLight.h"
 
 class Scene;
 class ResourceManager;
@@ -46,10 +47,10 @@ struct RenderData
     DirectionalLight *directionalLight = nullptr;
 
     /// @brief Matrices light-space pour chaque cascade (VP lumière)
-    Matrix4x4 lightSpaceMatrices[4];
+    Matrix4x4 lightSpaceMatrices[DirectionalLight::NUM_CASCADES];
 
     /// @brief Distances des plans de séparation des cascades (clip-space Z)
-    float cascadePlaneDistances[4] = {};
+    float cascadePlaneDistances[DirectionalLight::NUM_CASCADES] = {};
 
     const RenderSettings *renderSettings = nullptr;
 };

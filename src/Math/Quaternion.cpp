@@ -110,8 +110,8 @@ Vector3 Quaternion::ToEulerAngles() const
     Vector3 angles;
 
     // Tangage (pitch, rotation X)
-    float sinp = 2.0f * (w * y - z * x);
-    if (std::abs(sinp) >= 1)
+    float sinp = 2.0f * (w * x + y * z);
+    if (std::abs(sinp) >= 1.0f)
     {
         angles.x = std::copysign(Math::PI / 2.0f, sinp);
     }
@@ -121,14 +121,14 @@ Vector3 Quaternion::ToEulerAngles() const
     }
 
     // Lacet (yaw, rotation Y)
-    float siny_cosp = 2.0f * (w * z + x * y);
-    float cosy_cosp = 1.0f - 2.0f * (y * y + z * z);
-    angles.y = std::atan2(siny_cosp, cosy_cosp);
+    float siny = 2.0f * (w * y - x * z);
+    float cosy = 1.0f - 2.0f * (x * x + y * y);
+    angles.y = std::atan2(siny, cosy);
 
     // Roulis (roll, rotation Z)
-    float sinr_cosp = 2.0f * (w * x + y * z);
-    float cosr_cosp = 1.0f - 2.0f * (x * x + y * y);
-    angles.z = std::atan2(sinr_cosp, cosr_cosp);
+    float sinr = 2.0f * (w * z - x * y);
+    float cosr = 1.0f - 2.0f * (x * x + z * z);
+    angles.z = std::atan2(sinr, cosr);
 
     // Conversion de radians en degrés
     return angles * (180.0f / Math::PI);

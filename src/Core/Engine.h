@@ -47,11 +47,20 @@ public:
      */
     void RenderOneFrame();
 
+    void RequestResize(int width, int height);
+
 private:
     // Fenêtre GLFW
     GLFWwindow *m_window;
     // Etat d'initialisation du moteur
     bool m_initialized = false;
+
+    bool m_glfwInitialized = false;
+    bool m_windowCreated = false;
+    bool m_glContextReady = false;
+    bool m_resizePending = false;
+    int m_pendingWidth = 0;
+    int m_pendingHeight = 0;
 
     // systèmes principaux du moteur, possédés par des unique_ptr pour une gestion automatique de la mémoire.
     std::unique_ptr<ResourceManager> m_resourceManager;

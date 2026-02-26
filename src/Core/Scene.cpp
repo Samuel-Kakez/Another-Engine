@@ -32,6 +32,8 @@ GameObject *Scene::AddGameObject(const std::string &name)
     GameObject *ptr = newGameObject.get();
     ptr->m_ownerScene = this; // on définit le propriétaire
     m_gameObjects.push_back(std::move(newGameObject));
+    m_pendingInitialization.push_back(ptr);
+    LOG_TRACE("objet '%s' ajouté à la file d'initialisation (en attente=%zu, total=%zu).", ptr->name.c_str(), m_pendingInitialization.size(), m_gameObjects.size());
     return ptr;
 }
 
@@ -70,6 +72,7 @@ void Scene::DestroyGameObject(GameObject *gameObject)
 {
     if (gameObject)
     {
+        LOG_TRACE("destruction demandée pour l'objet '%s'.", gameObject->name.c_str());
         gameObject->Destroy();
     }
 }
@@ -80,9 +83,14 @@ void Scene::ProcessDestruction()
     std::erase_if(m_gameObjects, [&](const std::unique_ptr<GameObject> &go)
                   {
         if(go->IsPendingKill()){
-            // On publie l'événement avant de retourner true (ce qui causera la destruction)
-            // On dit explicitement "créé un gameObjectWillBeDestroyedEvent et initialise son membre 'gameObject' avec la valeur go.get()
-            m_eventDispatcher->publish(GameObjectWillBeDestroyedEvent(go.get()));
+            GameObject* doomed = go.get();
+            LOG_INFO("destruction de l'objet '%s'.", doomed->name.c_str());
+
+            // Retire aussi de la file d'initialisation pour éviter un pointeur perdant
+            std::erase(m_pendingInitialization, doomed);
+            LOG_TRACE("objet '%s' retiré de la file d'initialisation en attente.", doomed->name.c_str());
+
+            m_eventDispatcher->publish(GameObjectWillBeDestroyedEvent(doomed));
             return true;
         }
         return false; });
@@ -90,6 +98,9 @@ void Scene::ProcessDestruction()
 
 void Scene::Clear()
 {
+
+    // Purge des pointeurs non-propriétaires avant destruction des objets
+    m_pendingInitialization.clear();
     // 1. On vide la liste des gameObjects. La destruction des unique_ptr s'occupe de libérer la mémoire pour chaque GameObject et ses composants.
     m_gameObjects.clear();
 
@@ -99,4 +110,46 @@ void Scene::Clear()
     // 3. On publie un événement pour notifier tous les systèmes abonnés.
     m_eventDispatcher->publish(SceneClearedEvent{});
     LOG_INFO("scène vidée.");
+}
+
+void Scene::FlushPendingInitialization()
+{
+    if (m_pendingInitialization.empty())
+    {
+        return;
+    }
+
+    LOG_TRACE("début du flush d'initialisation (objets en attente=%zu).", m_pendingInitialization.size());
+
+    for (GameObject *go : m_pendingInitialization)
+    {
+        if (!go)
+        {
+            continue;
+        }
+
+        auto it = std::find_if(
+            m_gameObjects.begin(),
+            m_gameObjects.end(),
+            [go](const std::unique_ptr<GameObject> &obj)
+            { return obj.get() == go; });
+
+        if (it == m_gameObjects.end())
+        {
+            LOG_TRACE("initialisation ignorée : pointeur d'objet absent de la scène.");
+            continue;
+        }
+
+        if (go->IsPendingKill())
+        {
+            LOG_TRACE("initialisation ignorée pour '%s' : objet en attente de destruction.", go->name.c_str());
+            continue;
+        }
+
+        go->MarkInitialized();
+        LOG_INFO("objet '%s' initialisé.", go->name.c_str());
+        m_eventDispatcher->publish(GameObjectInitializedEvent(go));
+    }
+    LOG_TRACE("fin du flush d'initialisation.");
+    m_pendingInitialization.clear();
 }

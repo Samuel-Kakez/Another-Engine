@@ -18,7 +18,7 @@
 class Shader
 {
 public:
-    // interdiction de copie / déplacer 
+    // interdiction de copie / déplacer
     Shader(const Shader &) = delete;
     Shader &operator=(const Shader &) = delete;
     Shader(Shader &&) = delete;
@@ -49,17 +49,19 @@ public:
      */
     void Use();
 
+    bool IsValid() const { return m_isValid; }
+
     // --- fonctions d'aide pour les Uniforms ---
     // Les uniforms sont des variables globales dans les shaders qu'on peut définir depuis notre code C++
 
-    void setBool(const std::string &name, bool value) const;
-    void setInt(const std::string &name, int value) const;
-    void setFloat(const std::string &name, float value) const;
-    void setVec3(const std::string &name, const Vector3 &vec) const;
-    void setVec2(const std::string &name, const Vector2 &vec) const;
-    void setMat4(const std::string &name, const Matrix4x4 &mat) const;
-    void setMat3(const std::string &name, const Matrix3x3 &mat) const;
-    void setUInt(const std::string &name, const unsigned int value) const;
+    void SetBool(const std::string &name, bool value) const;
+    void SetInt(const std::string &name, int value) const;
+    void SetFloat(const std::string &name, float value) const;
+    void SetVec3(const std::string &name, const Vector3 &vec) const;
+    void SetVec2(const std::string &name, const Vector2 &vec) const;
+    void SetMat4(const std::string &name, const Matrix4x4 &mat) const;
+    void SetMat3(const std::string &name, const Matrix3x3 &mat) const;
+    void SetUInt(const std::string &name, const unsigned int value) const;
 
 private:
     /**
@@ -91,4 +93,6 @@ private:
      * @return int id la location de l'uniform
      */
     int getUniformLocation(const std::string &name) const;
+
+    bool m_isValid = false;
 };

@@ -9,6 +9,7 @@
 #include "Core/GameObject.h"
 #include "Components/Camera.h"
 #include "Math/Vector3.h"
+#include "Math/Matrix3x3.h"
 #include "Debug/StatsManager.h"
 #include <GLFW/glfw3.h>
 
@@ -19,10 +20,8 @@ void LightingPass::Execute(RenderData &data)
     // Rendu direct dans le framebuffer par défaut (écran)
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, data.screenWidth, data.screenHeight);
-
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
@@ -36,54 +35,62 @@ void LightingPass::Execute(RenderData &data)
 
     lightingShader->Use();
 
-    lightingShader->setVec3("camPos", data.camera->GetPosition());
-    lightingShader->setFloat("exposure", settings.exposure);
+    lightingShader->SetVec3("camPos", data.camera->GetPosition());
+    lightingShader->SetFloat("exposure", settings.exposure);
 
     // Lumière directionnelle
     DirectionalLight *light = data.directionalLight;
     if (light)
     {
         Transform *lightTransform = light->gameObject->GetComponent<Transform>();
-        Vector3 lightDir = lightTransform->getWorldMatrix().GetForward();
-        lightDir.Normalize();
+        const bool effectiveCastsShadows = (lightTransform != nullptr) && light->castsShadows;
 
-        lightingShader->setVec3("dirLight.direction", lightDir);
-        lightingShader->setVec3("dirLight.color", settings.lightColor);
-        lightingShader->setFloat("dirLight.intensity", settings.lightIntensity);
-        lightingShader->setBool("dirLight.castsShadows", light->castsShadows);
+        if (lightTransform)
+        {
+            Vector3 lightDir = lightTransform->GetWorldMatrix().GetForward();
+            lightDir.Normalize();
+            lightingShader->SetVec3("dirLight.direction", lightDir);
+        }
+        else
+        {
+            lightingShader->SetVec3("dirLight.direction", Vector3(0.0f, -1.0f, 0.0f));
+        }
+        lightingShader->SetVec3("dirLight.color", settings.lightColor);
+        lightingShader->SetFloat("dirLight.intensity", settings.lightIntensity);
+        lightingShader->SetBool("dirLight.castsShadows", effectiveCastsShadows);
 
         // --- Cascaded Shadow Map uniforms ---
         // On envoie les 4 matrices light-space et les 4 distances de plan de cascade
         // au fragment shader pour la sélection de cascade et la projection dans l'espace lumière
         for (int i = 0; i < DirectionalLight::NUM_CASCADES; ++i)
         {
-            lightingShader->setMat4(
+            lightingShader->SetMat4(
                 "lightSpaceMatrices[" + std::to_string(i) + "]", data.lightSpaceMatrices[i]);
-            lightingShader->setFloat("cascadePlaneDistances[" + std::to_string(i) + "]", data.cascadePlaneDistances[i]);
+            lightingShader->SetFloat("cascadePlaneDistances[" + std::to_string(i) + "]", data.cascadePlaneDistances[i]);
         }
 
         // Bind de la texture array CSM sur l'unité 8 (évite les confilts avec textures matériau)
-        if (light->castsShadows && light->shadowMapArray != 0)
+        if (effectiveCastsShadows && light->shadowMapArray != 0)
         {
             glActiveTexture(GL_TEXTURE8);
             glBindTexture(GL_TEXTURE_2D_ARRAY, light->shadowMapArray);
-            lightingShader->setInt("shadowMapArray", 8);
+            lightingShader->SetInt("shadowMapArray", 8);
         }
     }
     else
     {
-        lightingShader->setVec3("dirLight.direction", Vector3(0.0f, -1.0f, 0.0f));
-        lightingShader->setVec3("dirLight.color", Vector3(0.0f, 0.0f, 0.0f));
-        lightingShader->setFloat("dirLight.intensity", 0.0f);
-        lightingShader->setBool("dirLight.castsShadows", false);
+        lightingShader->SetVec3("dirLight.direction", Vector3(0.0f, -1.0f, 0.0f));
+        lightingShader->SetVec3("dirLight.color", Vector3(0.0f, 0.0f, 0.0f));
+        lightingShader->SetFloat("dirLight.intensity", 0.0f);
+        lightingShader->SetBool("dirLight.castsShadows", false);
     }
 
     // Ambient
     const AmbientSettings &amb = settings.ambient;
-    lightingShader->setVec3("skyColorZenith", amb.skyColorZenith);
-    lightingShader->setVec3("skyColorHorizon", amb.skyColorHorizon);
-    lightingShader->setVec3("groundColor", amb.groundColor);
-    lightingShader->setFloat("ambientIntensity", amb.intensity);
+    lightingShader->SetVec3("skyColorZenith", amb.skyColorZenith);
+    lightingShader->SetVec3("skyColorHorizon", amb.skyColorHorizon);
+    lightingShader->SetVec3("groundColor", amb.groundColor);
+    lightingShader->SetFloat("ambientIntensity", amb.intensity);
 
     // Rendu des objets visibles
     Material *lastMaterial = nullptr;
@@ -98,7 +105,10 @@ void LightingPass::Execute(RenderData &data)
                 lastMaterial = currentMaterial;
                 StatsManager::LogMaterialBind();
             }
-            lightingShader->setMat4("model", fr.renderable.transform->getWorldMatrix());
+            const Matrix4x4 &worldMatrix = fr.renderable.transform->GetWorldMatrix();
+            lightingShader->SetMat4("model", worldMatrix);
+            Matrix3x3 normalMatrix(worldMatrix.Inverse().Transpose());
+            lightingShader->SetMat3("normalMatrix", normalMatrix);
             fr.renderable.meshRenderer->mesh->Draw();
         }
     }

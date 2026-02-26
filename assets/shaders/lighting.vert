@@ -12,7 +12,9 @@ out mat3 TBN;
 out float ClipSpaceZ;
 
 uniform mat4 model;
+uniform mat3 normalMatrix;
 uniform vec2 tiling;
+
 
 layout (std140) uniform Matrices
 {
@@ -27,9 +29,6 @@ void main()
     FragPos = vec3(model * vec4(aPos, 1.0));
     TexCoords = aTexCoords * tiling;
 
-    // Matrice normale pour support du scale non-uniforme
-    // Note : pour un engine pur perf, précalculer côté CPU et passer en uniform
-    mat3 normalMatrix = mat3(transpose(inverse(model)));
     vec3 N = normalize(normalMatrix * aNormal);
     vec3 T = normalize(mat3(model) * aTangent);
 

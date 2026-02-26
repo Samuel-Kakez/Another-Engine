@@ -43,6 +43,7 @@ set(ENGINE_SOURCES
     src/Renderer/Texture.cpp
     src/Renderer/FullscreenQuad.cpp
     src/Renderer/Material.cpp
+    src/Renderer/stb_image_impl.cpp
     src/Renderer/Geometry/Mesh.cpp
     src/Renderer/Geometry/Model.cpp
     src/Renderer/Buffers/UniformBuffer.cpp

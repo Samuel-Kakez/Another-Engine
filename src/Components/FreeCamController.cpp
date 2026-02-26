@@ -29,12 +29,12 @@ void FreeCamController::Update(float deltaTime)
         return;
 
     // Initialisation unique au premier appel
-    if (!m_isInitialized)
+    if (!m_IsInitialized)
     {
         Vector3 initialEuler = camTransform->GetOrientation().ToEulerAngles();
         m_pitch = initialEuler.x;
         m_yaw = initialEuler.y;
-        m_isInitialized = true;
+        m_IsInitialized = true;
     }
 
     InputManager &input = gameObject->GetScene().GetInputManager();

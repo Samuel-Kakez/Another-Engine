@@ -16,6 +16,7 @@ class Transform;
 class Camera;
 struct ComponentAddedEvent;
 struct GameObjectWillBeDestroyedEvent;
+struct GameObjectInitializedEvent;
 struct Renderable;
 class UniformBuffer;
 class DirectionalLight;
@@ -83,9 +84,10 @@ private:
     // Callbacks pour réagir aux événements
     void OnComponentAdded(const ComponentAddedEvent &event);
     void OnGameObjectDestroyed(const GameObjectWillBeDestroyedEvent &event);
-    
-    // Stockage pour le désabonnement 
-    EventDispatcher* m_dispatcher = nullptr;
+    void OnGameObjectInitialized(const GameObjectInitializedEvent &event);
+
+    // Stockage pour le désabonnement
+    EventDispatcher *m_dispatcher = nullptr;
     std::vector<EventDispatcher::SubscriptionID> m_subscriptionIDs;
 
     // --- Données de rendu ---
@@ -115,7 +117,5 @@ private:
     int m_lastHeight = 0;
 
     /// @brief Fenêtre glfw
-    GLFWwindow* m_window; 
-
-
+    GLFWwindow *m_window;
 };

@@ -20,6 +20,10 @@ LightManager::LightManager(EventDispatcher &dispatcher)
                                                   { this->OnComponentAdded(event); }));
 
     m_subscriptionIDs.push_back(
+        dispatcher.subscribe<GameObjectInitializedEvent>([this](const GameObjectInitializedEvent &event)
+                                                         { this->OnGameObjectInitialized(event); }));
+
+    m_subscriptionIDs.push_back(
         dispatcher.subscribe<GameObjectWillBeDestroyedEvent>([this](const GameObjectWillBeDestroyedEvent &event)
                                                              { this->OnGameObjectDestroyed(event); }));
 
@@ -43,9 +47,31 @@ LightManager::~LightManager()
 // Implémentation des callbacks
 void LightManager::OnComponentAdded(const ComponentAddedEvent &event)
 {
+    if (!event.component || !event.component->gameObject || !event.component->gameObject->IsInitialized() || event.component->gameObject->IsPendingKill())
+    {
+        return;
+    }
     if (DirectionalLight *light = dynamic_cast<DirectionalLight *>(event.component))
     {
         RegisterLight(light);
+    }
+}
+
+void LightManager::OnGameObjectInitialized(const GameObjectInitializedEvent &event)
+{
+    if (!event.gameObject || event.gameObject->IsPendingKill())
+    {
+        return;
+    }
+
+    LOG_TRACE("évenement d'initialisation reçu pour l'objet '%s'.", event.gameObject->name.c_str());
+
+    for (DirectionalLight *light : event.gameObject->GetComponents<DirectionalLight>())
+    {
+        if (light)
+        {
+            RegisterLight(light);
+        }
     }
 }
 
@@ -53,12 +79,17 @@ void LightManager::OnGameObjectDestroyed(const GameObjectWillBeDestroyedEvent &e
 {
     if (DirectionalLight *light = event.gameObject->GetComponent<DirectionalLight>())
     {
+        LOG_TRACE("désenregistrement de la lumière de l'objet '%s'.", event.gameObject->name.c_str());
         UnregisterLight(light);
     }
 }
 
 void LightManager::RegisterLight(DirectionalLight *light)
 {
+    if (m_DirectionalLight && m_DirectionalLight != light)
+    {
+        LOG_WARN("une lumière directionnelle active existe déjà - remplacement de la lumière en cours.");
+    }
     m_DirectionalLight = light;
     // Crée la shadowmap pour la lumière
     if (light->castsShadows)
@@ -117,8 +148,8 @@ void LightManager::CreateShadowResourcesFor(DirectionalLight *light)
         DirectionalLight::NUM_CASCADES,
         0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
 
-        // NEAREST filtering : pas d'interpolation sur les valeurs de profondeur (le PCF se fait dans le shader)
-        // CLAMP_TO_BORDER avec couleur blanche (1.0) : hors-frustum -> profondeur max -> pas d'ombre
+    // NEAREST filtering : pas d'interpolation sur les valeurs de profondeur (le PCF se fait dans le shader)
+    // CLAMP_TO_BORDER avec couleur blanche (1.0) : hors-frustum -> profondeur max -> pas d'ombre
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);

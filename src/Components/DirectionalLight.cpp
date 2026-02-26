@@ -4,11 +4,6 @@
 
 #include <nlohmann/json.hpp>
 
-/// @brief Constructeur par défaut
-DirectionalLight::DirectionalLight() : castsShadows(true), shadowResolution(2048)
-{
-}
-
 /// @brief Constructeur paramétré
 /// @param color 
 /// @param intensity 
