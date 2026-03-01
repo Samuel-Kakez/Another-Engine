@@ -73,20 +73,8 @@ vec3 FresnelSchlick(float cosTheta, vec3 F0) {
 }
 
 // ============================================================================
-// CASCADED SOFT SHADOW - Poisson Disk Sampling (Rotated)
+// CASCADED HARD SHADOW
 // ============================================================================
-
-// Distribution de Poisson (16 samples)
-const vec2 poissonDisk[16] = vec2[](
-   vec2( -0.94201624, -0.39906216 ), vec2( 0.94558609, -0.76890725 ),
-   vec2( -0.094184101, -0.92938870 ), vec2( 0.34495938, 0.29387760 ),
-   vec2( -0.91588581, 0.45771432 ), vec2( -0.81544232, -0.87912464 ),
-   vec2( -0.38277543, 0.27676845 ), vec2( 0.97484398, 0.75648379 ),
-   vec2( 0.44323325, -0.97511554 ), vec2( 0.53742981, -0.47373420 ),
-   vec2( -0.26496911, -0.41893023 ), vec2( 0.79197514, 0.19090188 ),
-   vec2( -0.24188840, 0.99706507 ), vec2( -0.81409955, 0.91437590 ),
-   vec2( 0.19984126, 0.78641367 ), vec2( 0.14383161, -0.14100790 )
-);
 
 float CascadedShadowTest(vec3 fragWorldPos, vec3 normal, vec3 lightDir) {
     // Sélection de la cascade appropriée basée sur la profondeur clip-space du fragment
@@ -107,28 +95,13 @@ float CascadedShadowTest(vec3 fragWorldPos, vec3 normal, vec3 lightDir) {
     if (coords.z > 1.0 || coords.x < 0.0 || coords.x > 1.0 || coords.y < 0.0 || coords.y > 1.0)
         return 0.0;
 
-    // Bias adaptatif par cascade (les cascades éloignées ont plus de texels donc besoin de plus de bias)
+    // Bias adaptatif par cascade
     float baseBias = 0.00001;
     float bias = baseBias * float(cascadeIndex + 1);
 
-    // Stratified Sampling (Rotation aléatoire du disque)
-    float randomAngle = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) * 6.283185;
-    float s = sin(randomAngle);
-    float c = cos(randomAngle);
-    mat2 rot = mat2(c, -s, s, c);
-
-    float shadow = 0.0;
-    vec2 texelSize = 1.0 / vec2(textureSize(shadowMapArray, 0).xy);
-
-    // Rayon ajusté par cascade : les cascades proches = plus nettes, éloignées = plus douces
-    float diskRadius = 2.0 + float(cascadeIndex) * 0.5;
-
-    // PCF 16 samples
-    for(int i = 0; i < 16; ++i) {
-        vec2 offset = rot * poissonDisk[i] * diskRadius;
-        float pcfDepth = texture(shadowMapArray, vec3(coords.xy + offset * texelSize, float(cascadeIndex))).r;
-        shadow += (coords.z - bias > pcfDepth) ? 1.0 : 0.0;
-    }
+    // Échantillonnage unique (Hard Shadow)
+    float closestDepth = texture(shadowMapArray, vec3(coords.xy, float(cascadeIndex))).r;
+    float shadow = (coords.z - bias > closestDepth) ? 1.0 : 0.0;
 
     // Fondu entre la dernière cascade et "pas d'ombre" pour éviter une coupure nette
     float fadeFactor = 1.0;
@@ -140,7 +113,7 @@ float CascadedShadowTest(vec3 fragWorldPos, vec3 normal, vec3 lightDir) {
         fadeFactor = smoothstep(0.5, 0.4, edgeDist);
     }
 
-    return (shadow / 16.0) * fadeFactor;
+    return shadow * fadeFactor;
 }
 
 // ============================================================================
@@ -186,7 +159,7 @@ void main() {
     vec3 kD = (1.0 - F) * (1.0 - metallic);
     float NdotL = max(dot(N, L), 0.0);
 
-    // Ombre (Cascaded Soft Shadow)
+    // Ombre (Cascaded Hard Shadow)
     float shadow = dirLight.castsShadows ? CascadedShadowTest(FragPos, N, L) : 0.0;
 
     // Lumière directe

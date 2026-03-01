@@ -1,5 +1,5 @@
 #include "Math/Vector3.h"
-#include <cmath>    // pour sqrtf
+#include <cmath> // pour sqrtf
 
 // constructeurs
 // j'utilise la liste d'initialisation de membres
@@ -16,7 +16,6 @@ Vector3::Vector3(float initialX, float initialY, float initialZ) : x(initialX), 
 // fonctions membres
 void Vector3::Log() const
 {
-
 }
 
 // sqrtf signifie qu'elle travaille avec des floats
@@ -71,6 +70,50 @@ Vector3 Cross(const Vector3 &a, const Vector3 &b)
         (a.y * b.z - a.z * b.y),
         (a.z * b.x - a.x * b.z),
         (a.x * b.y - a.y * b.x));
+}
+
+Vector3 Vector3::operator/(float scalar) const
+{
+    float inv = 1.0f / scalar;
+    return Vector3(x * inv, y * inv, z * inv);
+}
+
+Vector3 Vector3::operator-() const
+{
+    return Vector3(-x, -y, -z);
+}
+
+Vector3 &Vector3::operator+=(const Vector3 &other)
+{
+    x += other.x;
+    y += other.y;
+    z += other.z;
+    return *this;
+}
+
+Vector3 &Vector3::operator-=(const Vector3 &other)
+{
+    x -= other.x;
+    y -= other.y;
+    z -= other.z;
+    return *this;
+}
+
+Vector3 &Vector3::operator*=(float scalar)
+{
+    x *= scalar;
+    y *= scalar;
+    z *= scalar;
+    return *this;
+}
+
+Vector3 &Vector3::operator/=(float scalar)
+{
+    float inv = 1.0f / scalar;
+    x *= inv;
+    y *= inv;
+    z *= inv;
+    return *this;
 }
 
 float Vector3::Dot(const Vector3 &other) const

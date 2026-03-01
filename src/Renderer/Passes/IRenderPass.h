@@ -47,7 +47,8 @@ struct RenderData
     DirectionalLight *directionalLight = nullptr;
 
     /// @brief Matrices light-space pour chaque cascade (VP lumière)
-    Matrix4x4 lightSpaceMatrices[DirectionalLight::NUM_CASCADES];
+    // Initialisé à l'identité par défaut
+    Matrix4x4 lightSpaceMatrices[DirectionalLight::NUM_CASCADES] = {};
 
     /// @brief Distances des plans de séparation des cascades (clip-space Z)
     float cascadePlaneDistances[DirectionalLight::NUM_CASCADES] = {};

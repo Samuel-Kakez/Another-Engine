@@ -83,6 +83,22 @@ struct Vector3
      */
     Vector3 operator*(const Vector3 &other) const;
 
+    /**
+     * @brief Division par un scalaire
+     */
+    Vector3 operator/(float scalar) const;
+
+    /**
+     * @brief Négation (unaire)
+     */
+    Vector3 operator-() const;
+
+    // --- Opérateurs composés ---
+    Vector3 &operator+=(const Vector3 &other);
+    Vector3 &operator-=(const Vector3 &other);
+    Vector3 &operator*=(float scalar);
+    Vector3 &operator/=(float scalar);
+
     float Dot(const Vector3 &other) const;
 };
 

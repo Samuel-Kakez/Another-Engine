@@ -133,6 +133,13 @@ struct Matrix4x4
      */
     Vector3 TransformDirection(const Vector3 &dir) const;
 
+    /**
+     * @brief Transform un point (W = 1) avec division perspective
+     * @details Multiplie [x, y, z, 1] par la matrice, puis divise par W.
+     * Indispensable pour les reprojections NDC -> world (matrice VP inverse).
+     */
+    Vector3 TransformPoint(const Vector3 &point) const;
+
     // --- Surcharge d'opérateurs ---
     /**
      * @brief Multiplie deux matrices

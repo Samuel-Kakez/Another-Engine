@@ -88,9 +88,12 @@ void LightManager::RegisterLight(DirectionalLight *light)
 {
     if (m_DirectionalLight && m_DirectionalLight != light)
     {
-        LOG_WARN("une lumière directionnelle active existe déjà - remplacement de la lumière en cours.");
+        LOG_WARN("une lumière directionnelle active existe déjà - nettoyage de l'ancienne avant remplacement.");
+        DestroyShadowResourcesFor(m_DirectionalLight);
     }
+
     m_DirectionalLight = light;
+    
     // Crée la shadowmap pour la lumière
     if (light->castsShadows)
     {

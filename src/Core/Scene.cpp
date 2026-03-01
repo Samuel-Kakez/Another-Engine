@@ -4,6 +4,8 @@
 #include "Core/GameObject.h"
 #include "Core/Transform.h"
 #include "Core/Component.h"
+#include "Components/Camera.h"
+
 #include "Components/MeshRenderer.h"
 #include "Managers/ResourceManager.h"
 #include "Renderer/Renderer.h"
@@ -23,6 +25,9 @@ Scene::Scene(std::unique_ptr<EventDispatcher> dispatcher, ResourceManager &resou
 
 Scene::~Scene()
 {
+    // A la destruction de la scène, on publie proprement les événements
+    // pour tous les systèmes abonnés avant de détruire les GameObjects
+    Clear();
 }
 
 GameObject *Scene::AddGameObject(const std::string &name)
@@ -86,7 +91,12 @@ void Scene::ProcessDestruction()
             GameObject* doomed = go.get();
             LOG_INFO("destruction de l'objet '%s'.", doomed->name.c_str());
 
-            // Retire aussi de la file d'initialisation pour éviter un pointeur perdant
+            // si la caméra active appartient à cet objet, l'invalider avant destruction
+            if(m_camera && m_camera->gameObject == doomed){
+                m_camera = nullptr;
+                LOG_TRACE("caméra active invalidée car son GameObject est détruit.");
+            }
+
             std::erase(m_pendingInitialization, doomed);
             LOG_TRACE("objet '%s' retiré de la file d'initialisation en attente.", doomed->name.c_str());
 
@@ -98,16 +108,25 @@ void Scene::ProcessDestruction()
 
 void Scene::Clear()
 {
+    // 1. Publier les destructions avant de libérer les GameObjects
+    for (const auto &go : m_gameObjects)
+    {
+        if (go)
+        {
+            m_eventDispatcher->publish(GameObjectWillBeDestroyedEvent(go.get()));
+        }
+    }
 
-    // Purge des pointeurs non-propriétaires avant destruction des objets
+    // 2. Purger les pointeurs non-propriétaires
     m_pendingInitialization.clear();
-    // 1. On vide la liste des gameObjects. La destruction des unique_ptr s'occupe de libérer la mémoire pour chaque GameObject et ses composants.
+
+    // 3. Détruire les objets
     m_gameObjects.clear();
 
-    // 2. On réinitialise la caméra à un état par défaut.
+    // 4. Réinitialiser la caméra
     m_camera = nullptr;
 
-    // 3. On publie un événement pour notifier tous les systèmes abonnés.
+    // 5. Notifier les systèmes d'un clear global
     m_eventDispatcher->publish(SceneClearedEvent{});
     LOG_INFO("scène vidée.");
 }

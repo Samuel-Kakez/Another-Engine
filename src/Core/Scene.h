@@ -39,7 +39,7 @@ public:
     Scene(std::unique_ptr<EventDispatcher> dispatcher, ResourceManager &resourceManager, LightManager &lightManager, InputManager &inputManager, Renderer &renderer);
 
     /**
-     * @brief La destruction est désormais automatique, le destructeur est inutile.
+     * @brief Destructeur. Appelle Clear() pour publier les événements de destruction.
      *
      */
     ~Scene();
@@ -144,7 +144,7 @@ public:
 
     /**
      * @brief Active les GameObjects en attente de finalisation
-     * @details 
+     * @details
      * Passe les objets de l'état Constructing à Initialized, puis publie
      * GameObjectInitializedEvent pour les systèmes
      * Les objets absents de la scène ou marqués PendingDestroy sont ignorés.
@@ -178,5 +178,5 @@ private:
      */
     void ProcessDestruction();
 
-    std::vector<GameObject*> m_pendingInitialization;
+    std::vector<GameObject *> m_pendingInitialization;
 };

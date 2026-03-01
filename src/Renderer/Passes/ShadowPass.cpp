@@ -49,20 +49,8 @@ std::vector<Vector3> ShadowPass::GetFrustumCornersWorldSpace(const Matrix4x4 &vi
         {
             for (int z = 0; z <= 1; ++z)
             {
-                // NDC va de -1 à 1
-                float ndcX = 2.0f * x - 1.0f;
-                float ndcY = 2.0f * y - 1.0f;
-                float ndcZ = 2.0f * z - 1.0f;
-
-                // Multiplication manuelle inv * vec4(ndc, 1.0) avec division perspective (w)
-                // Nécessaire car notre Matrix4x4::operator* ne gère que les Vector3
-
-                float wx = inv.m[0] * ndcX + inv.m[4] * ndcY + inv.m[8] * ndcZ + inv.m[12];
-                float wy = inv.m[1] * ndcX + inv.m[5] * ndcY + inv.m[9] * ndcZ + inv.m[13];
-                float wz = inv.m[2] * ndcX + inv.m[6] * ndcY + inv.m[10] * ndcZ + inv.m[14];
-                float ww = inv.m[3] * ndcX + inv.m[7] * ndcY + inv.m[11] * ndcZ + inv.m[15];
-
-                corners.push_back(Vector3(wx / ww, wy / ww, wz / ww));
+                Vector3 ndc(2.0f * x - 1.0f, 2.0f * y - 1.0f, 2.0f * z - 1.0f);
+                corners.push_back(inv.TransformPoint(ndc));
             }
         }
     }
@@ -79,10 +67,9 @@ Matrix4x4 ShadowPass::ComputeCascadeMatrix(
     Vector3 center(0.0f, 0.0f, 0.0f);
     for (const auto &c : frustumCorners)
     {
-        center = Vector3(center.x + c.x, center.y + c.y, center.z + c.z);
+        center += c;
     }
-    float inv = 1.0f / static_cast<float>(frustumCorners.size());
-    center = Vector3(center.x * inv, center.y * inv, center.z * inv);
+    center /= static_cast<float>(frustumCorners.size());
 
     // --- Étape 2 : Matrice de vue lumière ---
     // Choix du vecteur up : si la lumière est quasi-verticale, on utilise Z comme up

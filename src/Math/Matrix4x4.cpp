@@ -18,7 +18,6 @@ Matrix4x4::Matrix4x4() : m{
 // --- Fonctions membres ---
 void Matrix4x4::Log() const
 {
-
 }
 
 // --- Fonctions de création statiques ---
@@ -272,8 +271,8 @@ Matrix4x4 Matrix4x4::Inverse() const
     Matrix4x4 result;
     float inv[16], det;
 
-    // étape 1 : Calculer la matrice des cofacteurs 
-    // c'est la partie la plus intensive en calcule (1h à écrire D:)
+    // étape 1 : Calculer la matrice des cofacteurs
+    // c'est la partie la plus intensive en calcul (1h à écrire D:)
     inv[0] = m[5] * m[10] * m[15] - m[5] * m[11] * m[14] - m[9] * m[6] * m[15] + m[9] * m[7] * m[14] + m[13] * m[6] * m[11] - m[13] * m[7] * m[10];
     inv[4] = -m[4] * m[10] * m[15] + m[4] * m[11] * m[14] + m[8] * m[6] * m[15] - m[8] * m[7] * m[14] - m[12] * m[6] * m[11] + m[12] * m[7] * m[10];
     inv[8] = m[4] * m[9] * m[15] - m[4] * m[11] * m[13] - m[8] * m[5] * m[15] + m[8] * m[7] * m[13] + m[12] * m[5] * m[11] - m[12] * m[7] * m[9];
@@ -332,4 +331,16 @@ Matrix4x4 Matrix4x4::Transpose() const
     result.m[11] = m[14];
     result.m[15] = m[15];
     return result;
+}
+
+Vector3 Matrix4x4::TransformPoint(const Vector3 &point) const
+{
+    float rx = m[0] * point.x + m[4] * point.y + m[8] * point.z + m[12];
+    float ry = m[1] * point.x + m[5] * point.y + m[9] * point.z + m[13];
+    float rz = m[2] * point.x + m[6] * point.y + m[10] * point.z + m[14];
+    float rw = m[3] * point.x + m[7] * point.y + m[11] * point.z + m[15];
+
+    // Division perspective
+    float invW = 1.0f / rw;
+    return Vector3(rx * invW, ry * invW, rz * invW);
 }

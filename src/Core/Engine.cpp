@@ -28,10 +28,10 @@ Engine::Engine() : m_window(nullptr)
         return;
     }
     m_glfwInitialized = true;
-    LOG_INFO("GLFW initialisé (OpenGL4.0 Core).");
+    LOG_INFO("GLFW initialisé (OpenGL4.3 Core).");
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
@@ -78,6 +78,38 @@ Engine::Engine() : m_window(nullptr)
     m_glContextReady = true;
     LOG_INFO("GLAD initialisé.");
 
+    if (GLAD_GL_VERSION_4_3)
+    {
+        glEnable(GL_DEBUG_OUTPUT);
+        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+        glDebugMessageCallback(
+            [](GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam)
+            {
+                // Ignorer les messages "notification", trop verbeux
+                if (severity == GL_DEBUG_SEVERITY_NOTIFICATION)
+                {
+                    return;
+                }
+
+                if (severity == GL_DEBUG_SEVERITY_HIGH)
+                {
+                    LOG_ERROR("[OpenGL] %s", message);
+                }
+                else if (severity == GL_DEBUG_SEVERITY_MEDIUM)
+                {
+                    LOG_WARN("[OpenGL] %s", message);
+                }
+                else
+                {
+                    LOG_TRACE("[OpenGL] %s", message);
+                }
+            }, nullptr);
+            LOG_INFO("debug callback OpenGL activé (GL 4.3 core).");
+    }
+    else{
+        LOG_WARN("GL 4.3 non disponible - pas de debug callback OpenGL.");
+    }
+
     // On récupère la taille réelle du framebuffer
     int framebufferWidth, framebufferHeight;
     glfwGetFramebufferSize(m_window, &framebufferWidth, &framebufferHeight);
@@ -120,17 +152,27 @@ Engine::~Engine()
 {
     LOG_INFO("arrêt en cours, nettoyage des ressources...");
 
+    // =======================================
+    // Ordre de destruction critique
+    // =======================================
+
+    // 1. DebugUI - pas de dépendance sur les autres systèmes
     m_debugUI.reset();
+    // 2. Renderer - se désabonne du dispatcher (possédé par Scene)
     m_renderer.reset();
+    // 3. LightManager - se désabonne du dispatcher (possédé par Scene)
     m_lightManager.reset();
+    // 4. Scene - possède le dispatcher + gameObjects
     m_scene.reset();
 
+    // 5. ResourceManager - libère ressources GPU
     if (m_resourceManager)
     {
         m_resourceManager->Clear();
         m_resourceManager.reset();
     }
 
+    // 6. InputManager - pas de dépendance
     m_inputManager.reset();
 
     if (m_windowCreated && m_window)
