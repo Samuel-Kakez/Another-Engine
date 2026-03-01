@@ -1,4 +1,4 @@
-#version 400 core
+#version 430 core
 
 layout(triangles, invocations = 4) in;
 layout(triangle_strip, max_vertices = 3) out;
