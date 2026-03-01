@@ -222,7 +222,7 @@ void ShadowPass::Execute(RenderData &data)
 
     // --- Construction des 4 matrices light-space ---
     // Chaque cascade couvre [splitNear, splitFar] du frustum caméra
-    Transform *lightTransform = light->gameObject->GetComponent<Transform>();
+    Transform *lightTransform = light->GetGameObject()->GetComponent<Transform>();
     if (!lightTransform)
     {
         return;

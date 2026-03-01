@@ -20,11 +20,11 @@ FreeCamController::FreeCamController(float moveSpeed, float lookSensitivity) : m
 void FreeCamController::Update(float deltaTime)
 {
 
-    Camera *camera = gameObject->GetScene().GetCamera();
+    Camera *camera = GetGameObject()->GetScene().GetCamera();
     if (!camera)
         return;
 
-    Transform *camTransform = camera->gameObject->GetComponent<Transform>();
+    Transform *camTransform = camera->GetGameObject()->GetComponent<Transform>();
     if (!camTransform)
         return;
 
@@ -37,7 +37,7 @@ void FreeCamController::Update(float deltaTime)
         m_IsInitialized = true;
     }
 
-    InputManager &input = gameObject->GetScene().GetInputManager();
+    InputManager &input = GetGameObject()->GetScene().GetInputManager();
 
     // Bascule le mode de contrôle avec clic droit
     bool isRightMouseButtonPressed = input.IsMouseButtonPressed(GLFW_MOUSE_BUTTON_RIGHT);

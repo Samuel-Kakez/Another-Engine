@@ -85,7 +85,7 @@ Renderer::Renderer(ResourceManager &resourceManager, EventDispatcher &dispatcher
 
 void Renderer::OnComponentAdded(const ComponentAddedEvent &event)
 {
-    if (!event.component || !event.component->gameObject || !event.component->gameObject->IsInitialized() || event.component->gameObject->IsPendingKill())
+    if (!event.component || !event.component->GetGameObject() || !event.component->GetGameObject()->IsInitialized() || event.component->GetGameObject()->IsPendingKill())
     {
         return;
     }
@@ -94,7 +94,7 @@ void Renderer::OnComponentAdded(const ComponentAddedEvent &event)
     if (MeshRenderer *mr = dynamic_cast<MeshRenderer *>(event.component))
     {
         // On s'assure que le gameobject a un transform
-        Transform *transform = mr->gameObject->GetComponent<Transform>();
+        Transform *transform = mr->GetGameObject()->GetComponent<Transform>();
         if (!transform || !mr->mesh || !mr->material)
         {
             // warning
@@ -133,7 +133,7 @@ void Renderer::OnGameObjectDestroyed(const GameObjectWillBeDestroyedEvent &event
     if (MeshRenderer *mr = event.gameObject->GetComponent<MeshRenderer>())
     {
         std::erase_if(m_renderables, [gameObject = event.gameObject](const Renderable &renderable)
-                      { return renderable.meshRenderer->gameObject == gameObject; });
+                      { return renderable.meshRenderer->GetGameObject() == gameObject; });
         LOG_TRACE("objets de rendu désenregistrés pour '%s'.", event.gameObject->name.c_str());
     }
 }
@@ -158,11 +158,11 @@ void Renderer::RegisterRenderable(Transform *transform, MeshRenderer *meshRender
         { return r.meshRenderer == meshRenderer; });
     if (alreadyRegistered)
     {
-        LOG_TRACE("enregistrement du rendu ignoré : '%s' est déjà enregistré.", meshRenderer->gameObject ? meshRenderer->gameObject->name.c_str() : "Inconnu");
+        LOG_TRACE("enregistrement du rendu ignoré : '%s' est déjà enregistré.", meshRenderer->GetGameObject() ? meshRenderer->GetGameObject()->name.c_str() : "Inconnu");
         return;
     }
     m_renderables.push_back({transform, meshRenderer});
-    LOG_TRACE("objet '%s' enregistré pour le rendu (total=%zu).", meshRenderer->gameObject ? meshRenderer->gameObject->name.c_str() : "Inconnu", m_renderables.size());
+    LOG_TRACE("objet '%s' enregistré pour le rendu (total=%zu).", meshRenderer->GetGameObject() ? meshRenderer->GetGameObject()->name.c_str() : "Inconnu", m_renderables.size());
 }
 
 void Renderer::Render(Scene &scene, GLFWwindow *window)
@@ -227,12 +227,12 @@ void Renderer::Render(Scene &scene, GLFWwindow *window)
     for (const auto &renderable : m_renderables)
     {
 
-        if (!renderable.meshRenderer || !renderable.meshRenderer->gameObject)
+        if (!renderable.meshRenderer || !renderable.meshRenderer->GetGameObject())
         {
             continue;
         }
 
-        if (renderable.meshRenderer->gameObject->IsPendingKill())
+        if (renderable.meshRenderer->GetGameObject()->IsPendingKill())
         {
             continue;
         }

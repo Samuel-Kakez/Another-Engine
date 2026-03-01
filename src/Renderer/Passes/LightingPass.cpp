@@ -42,7 +42,7 @@ void LightingPass::Execute(RenderData &data)
     DirectionalLight *light = data.directionalLight;
     if (light)
     {
-        Transform *lightTransform = light->gameObject->GetComponent<Transform>();
+        Transform *lightTransform = light->GetGameObject()->GetComponent<Transform>();
         const bool effectiveCastsShadows = (lightTransform != nullptr) && light->castsShadows;
 
         if (lightTransform)
@@ -57,6 +57,7 @@ void LightingPass::Execute(RenderData &data)
         }
         lightingShader->SetVec3("dirLight.color", settings.lightColor);
         lightingShader->SetFloat("dirLight.intensity", settings.lightIntensity);
+        lightingShader->SetFloat("shadowSoftness", settings.shadow.softness);
         lightingShader->SetBool("dirLight.castsShadows", effectiveCastsShadows);
 
         // --- Cascaded Shadow Map uniforms ---

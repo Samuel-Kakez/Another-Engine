@@ -13,17 +13,13 @@ class Component
 {
 public:
     /**
-     * @brief Un pointeur vers le GameObject auquel ce composant est attaché
-     * @details Permet à un composant d'accéder à son propriétaire et à ses autres composants
-     *
-     */
-    GameObject *gameObject;
-
-    /**
      * @brief Constructeur par défaut de Component
      *
      */
     Component() : gameObject(nullptr) {}
+
+    /// @brief Retourne le GameObject propriétaire
+    GameObject *GetGameObject() const { return gameObject; }
 
     /**
      * @brief Destructeur virtuel de Component
@@ -53,4 +49,15 @@ public:
     virtual void FixedUpdate(float fixedDeltaTime)
     {
     }
+
+protected:
+    /**
+     * @brief Un pointeur vers le GameObject auquel ce composant est attaché
+     * @details Accessible uniquement par GameObject::AddComponent via friend class
+     *
+     */
+    GameObject *gameObject;
+
+private:
+    friend class GameObject;
 };

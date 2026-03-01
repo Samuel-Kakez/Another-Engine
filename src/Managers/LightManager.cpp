@@ -47,7 +47,7 @@ LightManager::~LightManager()
 // Implémentation des callbacks
 void LightManager::OnComponentAdded(const ComponentAddedEvent &event)
 {
-    if (!event.component || !event.component->gameObject || !event.component->gameObject->IsInitialized() || event.component->gameObject->IsPendingKill())
+    if (!event.component || !event.component->GetGameObject() || !event.component->GetGameObject()->IsInitialized() || event.component->GetGameObject()->IsPendingKill())
     {
         return;
     }

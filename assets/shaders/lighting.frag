@@ -8,7 +8,7 @@ in mat3 TBN;
 in float ClipSpaceZ;
 
 // ============================================================================
-// STRUCTS et UNIFORMS
+// STRUCTS & UNIFORMS
 // ============================================================================
 
 struct DirectionalLight {
@@ -38,16 +38,40 @@ uniform sampler2DArray shadowMapArray;
 uniform mat4 lightSpaceMatrices[NUM_CASCADES];
 uniform float cascadePlaneDistances[NUM_CASCADES];
 
+// Shadow softness: radius in texels to spread the Poisson samples over.
+// 1.0-2.0 gives a subtle, cheap blur. 3.0+ gets noticeably soft.
+uniform float shadowSoftness;
+
 uniform vec3 camPos;
 uniform float exposure;
 
-// Ambient hémisphérique
+// Hemispheric ambient
 uniform vec3 skyColorZenith;
 uniform vec3 skyColorHorizon;
 uniform vec3 groundColor;
 uniform float ambientIntensity;
 
 const float PI = 3.14159265359;
+
+// ============================================================================
+// POISSON DISK (12 samples — good quality/perf sweet spot)
+// ============================================================================
+
+const int POISSON_SAMPLES = 12;
+const vec2 poissonDisk[12] = vec2[](
+    vec2(-0.9262, -0.0972),
+    vec2(-0.4593,  0.5765),
+    vec2( 0.1710, -0.8880),
+    vec2( 0.5765,  0.2389),
+    vec2(-0.3210, -0.4150),
+    vec2( 0.7948,  0.7570),
+    vec2(-0.6912,  0.2260),
+    vec2( 0.0382, -0.3510),
+    vec2( 0.4420, -0.5102),
+    vec2(-0.1580,  0.8685),
+    vec2( 0.8322, -0.2130),
+    vec2(-0.7610, -0.6340)
+);
 
 // ============================================================================
 // PBR (Cook-Torrance)
@@ -73,11 +97,17 @@ vec3 FresnelSchlick(float cosTheta, vec3 F0) {
 }
 
 // ============================================================================
-// CASCADED HARD SHADOW
+// CASCADED POISSON-DISK SHADOW
 // ============================================================================
 
+// Cheap per-fragment pseudo-random rotation to break up sampling patterns.
+// Uses screen-space coords so the noise is stable in screen space (no shimmer).
+float InterleavedGradientNoise(vec2 screenPos) {
+    return fract(52.9829189 * fract(dot(screenPos, vec2(0.06711056, 0.00583715))));
+}
+
 float CascadedShadowTest(vec3 fragWorldPos, vec3 normal, vec3 lightDir) {
-    // Sélection de la cascade appropriée basée sur la profondeur clip-space du fragment
+    // Pick cascade
     int cascadeIndex = NUM_CASCADES - 1;
     for (int i = 0; i < NUM_CASCADES; ++i) {
         if (ClipSpaceZ < cascadePlaneDistances[i]) {
@@ -86,24 +116,44 @@ float CascadedShadowTest(vec3 fragWorldPos, vec3 normal, vec3 lightDir) {
         }
     }
 
-    // Projection dans l'espace lumière de cette cascade
+    // Project into this cascade's light space
     vec4 fragPosLightSpace = lightSpaceMatrices[cascadeIndex] * vec4(fragWorldPos, 1.0);
     vec3 coords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     coords = coords * 0.5 + 0.5;
 
-    // Hors-frustum -> pas d'ombre
-    if (coords.z > 1.0 || coords.x < 0.0 || coords.x > 1.0 || coords.y < 0.0 || coords.y > 1.0)
+    if (coords.z > 1.0 || coords.x < 0.0 || coords.x > 1.0
+        || coords.y < 0.0 || coords.y > 1.0)
         return 0.0;
 
-    // Bias adaptatif par cascade
+    // Adaptive bias per cascade
     float baseBias = 0.00001;
     float bias = baseBias * float(cascadeIndex + 1);
 
-    // Échantillonnage unique (Hard Shadow)
-    float closestDepth = texture(shadowMapArray, vec3(coords.xy, float(cascadeIndex))).r;
-    float shadow = (coords.z - bias > closestDepth) ? 1.0 : 0.0;
+    // ---- Poisson disk sampling ----
+    vec2 texelSize = 1.0 / vec2(textureSize(shadowMapArray, 0).xy);
 
-    // Fondu entre la dernière cascade et "pas d'ombre" pour éviter une coupure nette
+    // Fixed spread in texels — NOT scaled by cascade index.
+    // Each cascade's shadow map covers a different world-space range but has the
+    // same resolution, so the same texel-space radius naturally produces a tighter
+    // world-space blur on closer cascades and a proportional one on far cascades.
+    // This avoids the "enormous blur on cascade 3" problem.
+    vec2 radius = texelSize * shadowSoftness;
+
+    // Rotate the entire disk per-fragment to hide the repeated pattern
+    float angle = InterleavedGradientNoise(gl_FragCoord.xy) * 2.0 * PI;
+    float s = sin(angle);
+    float c = cos(angle);
+    mat2 rotation = mat2(c, s, -s, c);
+
+    float shadow = 0.0;
+    for (int i = 0; i < POISSON_SAMPLES; ++i) {
+        vec2 offset = rotation * poissonDisk[i] * radius;
+        float depth = texture(shadowMapArray, vec3(coords.xy + offset, float(cascadeIndex))).r;
+        shadow += (coords.z - bias > depth) ? 1.0 : 0.0;
+    }
+    shadow /= float(POISSON_SAMPLES);
+
+    // Fade the last cascade edge to avoid hard cutoff
     float fadeFactor = 1.0;
     if (cascadeIndex == NUM_CASCADES - 1) {
         float edgeDist = max(
@@ -117,7 +167,7 @@ float CascadedShadowTest(vec3 fragWorldPos, vec3 normal, vec3 lightDir) {
 }
 
 // ============================================================================
-// TONE MAPPING inline (ACES Filmic)
+// TONE MAPPING (ACES Filmic)
 // ============================================================================
 
 vec3 ACESFilm(vec3 x) {
@@ -159,18 +209,18 @@ void main() {
     vec3 kD = (1.0 - F) * (1.0 - metallic);
     float NdotL = max(dot(N, L), 0.0);
 
-    // Ombre (Cascaded Hard Shadow)
+    // Shadow
     float shadow = dirLight.castsShadows ? CascadedShadowTest(FragPos, N, L) : 0.0;
 
-    // Lumière directe
+    // Direct lighting
     vec3 radiance = dirLight.color * dirLight.intensity;
     vec3 direct = (kD * albedo / PI + spec) * radiance * NdotL * (1.0 - shadow);
 
-    // Ambient hémisphérique
+    // Hemispheric ambient
     float skyBlend = N.y * 0.5 + 0.5;
     vec3 skyIrradiance = mix(groundColor, mix(skyColorHorizon, skyColorZenith, skyBlend), skyBlend);
     vec3 ambient = skyIrradiance * albedo * ambientIntensity;
 
-    // Tone mapping + sortie (gamma via GL_FRAMEBUFFER_SRGB)
+    // Tone mapping + output (gamma via GL_FRAMEBUFFER_SRGB)
     FragColor = vec4(ACESFilm((ambient + direct) * exposure), 1.0);
 }

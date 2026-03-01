@@ -92,7 +92,7 @@ void Scene::ProcessDestruction()
             LOG_INFO("destruction de l'objet '%s'.", doomed->name.c_str());
 
             // si la caméra active appartient à cet objet, l'invalider avant destruction
-            if(m_camera && m_camera->gameObject == doomed){
+            if(m_camera && m_camera->GetGameObject() == doomed){
                 m_camera = nullptr;
                 LOG_TRACE("caméra active invalidée car son GameObject est détruit.");
             }
@@ -142,26 +142,12 @@ void Scene::FlushPendingInitialization()
 
     for (GameObject *go : m_pendingInitialization)
     {
-        if (!go)
-        {
-            continue;
-        }
+        // pas besoin de vérifier l'existence dans m_gameObjects :
+        // ProcessDestruction() retire les objets détruits de m_pendingInitialization
+        // via std::erase(), c'est appelé avant FlushPendingInitialization dans la game loop
 
-        auto it = std::find_if(
-            m_gameObjects.begin(),
-            m_gameObjects.end(),
-            [go](const std::unique_ptr<GameObject> &obj)
-            { return obj.get() == go; });
-
-        if (it == m_gameObjects.end())
+        if (!go || go->IsPendingKill())
         {
-            LOG_TRACE("initialisation ignorée : pointeur d'objet absent de la scène.");
-            continue;
-        }
-
-        if (go->IsPendingKill())
-        {
-            LOG_TRACE("initialisation ignorée pour '%s' : objet en attente de destruction.", go->name.c_str());
             continue;
         }
 

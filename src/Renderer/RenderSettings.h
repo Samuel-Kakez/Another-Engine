@@ -11,6 +11,9 @@ struct ShadowSettings
     /// @brief Multiplicateur lambda pour le split scheme (0 = uniform, 1 = logarithmic)
     // 0.5 est un bon compromis
     float cascadeSplitLambda = 0.5f;
+
+    /// @brief Douceur des ombres
+    float softness = 2.0f;
 };
 
 /// @brief Paramètres d'éclairage ambient hémisphérique
