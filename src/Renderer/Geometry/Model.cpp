@@ -19,7 +19,11 @@ void Model::loadModel(const std::string &path)
 {
     Assimp::Importer importer;
     // Lire le fichier aiProcessTriangulate s'assure que toutes les faces sont des triangles
-    const aiScene *scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_CalcTangentSpace);
+    const aiScene *scene = importer.ReadFile(path, 
+        aiProcess_Triangulate |
+        aiProcess_GenSmoothNormals |
+        aiProcess_CalcTangentSpace |
+        aiProcess_PreTransformVertices);
 
     // vérifier les erreurs de chargement
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)

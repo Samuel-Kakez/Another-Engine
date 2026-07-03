@@ -160,7 +160,7 @@ float CascadedShadowTest(vec3 fragWorldPos, vec3 normal, vec3 lightDir) {
             max(abs(coords.x - 0.5), abs(coords.y - 0.5)),
             abs(coords.z - 0.5)
         );
-        fadeFactor = smoothstep(0.5, 0.4, edgeDist);
+        fadeFactor = 1.0 - smoothstep(0.4, 0.5, edgeDist);
     }
 
     return shadow * fadeFactor;

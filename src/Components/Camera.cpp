@@ -29,20 +29,21 @@ Quaternion Camera::GetOrientation() const
 Matrix4x4 Camera::GetViewMatrix() const
 {
     Transform *tr = GetGameObject() ? GetGameObject()->GetComponent<Transform>() : nullptr;
-    if(!tr){
+    if (!tr)
+    {
         // warn
         return Matrix4x4::CreateLookAt(
             Vector3(0.0f, 0.0f, 0.0f),
             Vector3(0.0f, 0.0f, -1.0f),
-            Vector3(0.0f, 1.0f, 0.0f)
-        );
+            Vector3(0.0f, 1.0f, 0.0f));
     }
 
-    Vector3 position = tr->GetWorldPosition();
-    Quaternion orientation = tr->GetOrientation();
+    const Matrix4x4 &worldMatrix = tr->GetWorldMatrix();
 
-    Vector3 front = orientation * Vector3(0, 0, -1);
-    Vector3 up = orientation * Vector3(0, 1, 0);
+    Vector3 position = tr->GetWorldPosition();
+    Vector3 front = worldMatrix.GetForward();
+    Vector3 up = worldMatrix.TransformDirection(Vector3(0, 1, 0));
+
     front.Normalize();
     up.Normalize();
 

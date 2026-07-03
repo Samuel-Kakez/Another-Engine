@@ -43,7 +43,11 @@ void LightingPass::Execute(RenderData &data)
     if (light)
     {
         Transform *lightTransform = light->GetGameObject()->GetComponent<Transform>();
-        const bool effectiveCastsShadows = (lightTransform != nullptr) && light->castsShadows;
+        const bool effectiveCastsShadows =
+            settings.enableShadows &&
+            lightTransform != nullptr &&
+            light->castsShadows &&
+            light->shadowMapArray != 0;
 
         if (lightTransform)
         {
